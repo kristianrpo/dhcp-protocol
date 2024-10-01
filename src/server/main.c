@@ -9,6 +9,25 @@
 #define DHCP_SERVER_PORT 1067
 #define BUFFER_SIZE 576
 
+struct dhcp_message {
+    uint8_t op;       
+    uint8_t htype;
+    uint8_t hlen;
+    uint8_t hops;
+    uint32_t xid;
+    uint16_t secs;
+    uint16_t flags;
+    uint32_t ciaddr;
+    uint32_t yiaddr;
+    uint32_t siaddr;
+    uint32_t giaddr;
+    uint8_t chaddr[16];
+    uint8_t sname[64];
+    uint8_t file[128];
+    uint8_t options[312];
+};
+
+
 // Metodo para retornar el tipo de error a la hora de crear un socket
 void error(const char *msg) {
     switch (errno) {
@@ -67,8 +86,12 @@ int main(){
             error("Error al recibir mensaje");
         }
 
-        // Imprimir el mensaje recibido (para propósitos de prueba)
         printf("Mensaje recibido de cliente: %s\n", buffer);
+
+        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, c como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
+        // Convertir el buffer a un mensaje DHCP
+        struct dhcp_message *msg = (struct dhcp_message *)buffer;
+
         
     }
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos
