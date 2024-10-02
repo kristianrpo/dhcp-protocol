@@ -181,7 +181,7 @@ void initialize_leases(struct lease_entry leases[MAX_LEASES]) {
         memset(leases[i].mac_addr, 0, 6);
         
         // Se inicializa cada una de las ips definidas en el rango para todos los posibles arrendamientos que se puedan crear.
-        leases[i].ip_addr = htonl(start_ip); 
+        leases[i].ip_addr = start_ip; 
         start_ip++; 
 
         // Se establece un valor por defecto al tiempo de inicio del arrendamiento de 0 para todos los posibles arrendamientos que se puedan crear.
