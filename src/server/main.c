@@ -116,16 +116,13 @@ int main(){
             error("Error al recibir mensaje");
         }
 
-        printf("Mensaje recibido de cliente: %s\n", buffer);
-
         // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
         // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura
         struct dhcp_message *msg = (struct dhcp_message *)buffer;
 
         // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
         message_type = get_dhcp_message_type(msg);
-
-        int message_type = get_dhcp_message_type(msg);
+        
         if (message_type == 1) {
             printf("Mensaje DHCPDISCOVER recibido\n");
         }
