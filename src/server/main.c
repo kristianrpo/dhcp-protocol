@@ -6,9 +6,22 @@
 #include <arpa/inet.h>  
 #include <sys/socket.h> 
 #include <unistd.h>  
+#include <time.h>   
 
 #define DHCP_SERVER_PORT 1067
 #define BUFFER_SIZE 576
+
+#define MAX_LEASES 50
+#define START_IP "192.168.0.21"
+#define END_IP "192.158.0.71"
+
+struct lease_entry {
+    uint8_t mac_addr[6];  // Dirección MAC del cliente
+    uint32_t ip_addr;     // Dirección IP asignada (en formato binario)
+    time_t lease_start;   // Tiempo de inicio del arrendamiento
+    int lease_duration;   // Duración del arrendamiento (en segundos)
+};
+
 
 struct dhcp_message {
     uint8_t op;             // Define el tipo de operacion del paquete, =1 si es una solicitud proveniente de un cliente, =2 si es una respuesta proveniente del servidor.      
@@ -132,8 +145,79 @@ int get_dhcp_message_type(struct dhcp_message *msg) {
     return -1;  
 }
 
+// Función para convertir una IP string (ej: "192.168.0.1") a formato entero binario
+uint32_t ip_to_int(const char *ip) {
+    // Se define estructura in_addr para manejar direcciones IP.
+    struct in_addr addr;
+
+    // Se convierte la dirección ip a un formato binario con la función inet_aton
+    inet_aton(ip, &addr);
+
+    // Se retorna el valor convertido a int.
+    return ntohl(addr.s_addr);
+}
+
+// Función para convertir una IP en formato binario de vuelta a cadena
+void int_to_ip(uint32_t ip, char *buffer) {
+    // Se define estructura in_addr para manejar direcciones IP
+    struct in_addr addr;
+
+    // Convierte de formato de host a formato de red (binario)
+    addr.s_addr = htonl(ip);
+
+    // Convierte de binario a la cadena de chats
+    strcpy(buffer, inet_ntoa(addr));
+}
+
+// Función para inicializar los valores de memoria de los arrendamientos (en 0) con el fin de evitar y limpiar los espacios que se pretenden ocupar.
+void initialize_leases(struct lease_entry leases[MAX_LEASES]) {
+    // Convertimos ips a enteros para operarlos (+1)
+    uint32_t start_ip = ip_to_int(START_IP); 
+    uint32_t end_ip = ip_to_int(END_IP);
+    
+    // Se recorre cada uno de los posibles arrendamientos y se establece en 0
+    for (int i = 0; i < MAX_LEASES; i++) {
+        // Iniciar con MACs vacías (para los 6 bits de la mac en 0) para todos los posibles arrendamientos que se puedan crear.
+        memset(leases[i].mac_addr, 0, 6);
+        
+        // Se inicializa cada una de las ips definidas en el rango para todos los posibles arrendamientos que se puedan crear.
+        leases[i].ip_addr = htonl(start_ip); 
+        start_ip++; 
+
+        // Se establece un valor por defecto al tiempo de inicio del arrendamiento de 0 para todos los posibles arrendamientos que se puedan crear.
+        leases[i].lease_start = 0;
+
+        // Se establece un valor por defecto a la duración del arrendamiento de 0 para todos los posibles arrendamientos que se puedan crear.
+        leases[i].lease_duration = 0;     
+    }
+}
+
+// Función para asignar una ip al cliente.
+uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint8_t *mac_addr) {
+    // Se empieza a recorrer la tabla de arrendamiento para verificar ips disponibles.
+    for (int i = 0; i < MAX_LEASES; i++) {
+        // Se verifica que la ip este disponible, esto pasa cuando el arrendamiento no tiene una mac asignada o ya caduco su tiempo.
+        if (leases[i].mac_addr == 0 || (time(NULL) - leases[i].lease_start) > leases[i].lease_duration) {
+            // Se asigna al arrendamiento con la ip disponible la MAC del cliente.
+            memcpy(leases[i].mac_addr, mac_addr, 6);
+
+            // Se obtiene el tiempo actual para definirlo en el arrendamiento para la ip disponible.
+            leases[i].lease_start = time(NULL);
+
+            // Se define la duración del arrendamiento.
+            leases[i].lease_duration = 3600;
+
+            // Se retorna la ip asignada para verificaciónes.
+            return leases[i].ip_addr;
+        }
+    }
+    return -1;
+}
+
+
+
 // Función para enviar un DHCPOFFER.
-void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg) {
+void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
     // Se define la estructura que va a almacenar el mensaje de oferta que se va a enviar al cliente.
     struct dhcp_message offer_msg;
 
@@ -154,7 +238,15 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     offer_msg.xid = discover_msg->xid;
 
     // Se define la IP que se le va a ofrecer al cliente para que la utilice en la red.
-    offer_msg.yiaddr = inet_addr("192.168.1.100");
+    uint32_t assigned_ip = assign_ip_to_client(leases, discover_msg->chaddr);
+
+    if(assigned_ip<0){
+        perror("Error al enviar DHCPOFFER");
+    }
+
+
+    // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida
+    offer_msg.yiaddr = htonl(assigned_ip);
 
     // Se define la dirección MAC del cliente.
     memcpy(offer_msg.chaddr, discover_msg->chaddr, 16); 
@@ -186,11 +278,11 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
 
 
 // Función para procesar los mensajes DHCP según el tipo
-void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg) {
+void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
     switch (message_type) {
         case 1: 
             printf("Mensaje DHCPDISCOVER recibido\n");
-            send_dhcp_offer(fd, client_addr, client_len, msg); 
+            send_dhcp_offer(fd, client_addr, client_len, msg, leases); 
             break;
         default:
             printf("Mensaje DHCP desconocido o no soportado, tipo: %d\n", message_type);
@@ -212,6 +304,9 @@ int main(){
     // Tamaño de la dirección del clinete (para saber cuantos bytes se debe leer o escribir en la estructura).
     socklen_t client_len = sizeof(client_addr);
 
+    // Tabla de arrendamiento. Aquí se encuentran todos las ips que han sido asignadas con la MAC de los clientes e información del tiempo de inicio del arrendamiento y su duración.
+    struct lease_entry leases[MAX_LEASES];
+
     // Inicializar el socket
     fd = initialize_socket();
 
@@ -231,7 +326,7 @@ int main(){
         message_type = get_dhcp_message_type(msg);
 
         // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente
-        process_dhcp_message(message_type, fd, &client_addr, client_len, msg);
+        process_dhcp_message(message_type, fd, &client_addr, client_len, msg, leases);
 
     }
 
