@@ -131,12 +131,65 @@ int get_dhcp_message_type(struct dhcp_message *msg) {
     return -1;  
 }
 
+// Función para enviar un DHCPOFFER.
+void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg) {
+    // Se define la estructura que va a almacenar el mensaje de oferta que se va a enviar al cliente.
+    struct dhcp_message offer_msg;
+
+    // Llenamos la estructura que contiene el mensaje a enviar de 0's con el fin de reservar/limpiar el espacio de memoria que va a tener la información relacionada a cada campo del datagrama
+    memset(&offer_msg, 0, sizeof(offer_msg));
+    
+    // Se llena los campos del datagrama con la información pertinente.
+    // Se establece el campo con el valor de '2', indicando que el mensaje fué enviado por parte de un servidor, lo que indica una respuesta.
+    offer_msg.op = 2;
+
+    // Se establece el mismo protocolo utilizado por el cliente para enviar el mensaje, en este caso, utilizandose el protocolo ethernet, permitiendo a dispositivos comunicarse entre si en una red.
+    offer_msg.htype = discover_msg->htype;
+
+    // Se define el tamaño de la dirección de la dirección MAC que es el mismo del DHCPDISCOVER.
+    offer_msg.hlen = discover_msg->hlen;
+
+    // Identificador aleatorio que define la comunicación especifica que se esta llevando a cabo entre cliente y servidor, es la misma que DHCPDISCOVER.
+    offer_msg.xid = discover_msg->xid;
+
+    // Se define la IP que se le va a ofrecer al cliente para que la utilice en la red.
+    offer_msg.yiaddr = inet_addr("192.168.1.100");
+
+    // Se define la dirección MAC del cliente.
+    memcpy(offer_msg.chaddr, discover_msg->chaddr, 16); 
+    
+    // Configuramos el campo de opciones donde se especifica los parametros del mensaje que se le está mandando al cliente.
+    // Se define la opción 53 que permite ubicar el lugar donde se describe el tipo del mensaje
+    offer_msg.options[0] = 53;
+
+    // Se define la logitud del tipo de mensaje
+    offer_msg.options[1] = 1;
+
+    // Se establece el ID del tipo de mensaje que se está realizando, que en este caso es un DHCPOFFER.
+    offer_msg.options[2] = 2;
+
+    // Se define el campo que especifica que se llegó al final de las opciones.
+    offer_msg.options[3] = 255; 
+    
+    // Se utiliza la función sendto para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
+    ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)client_addr, client_len);
+
+    // Se verifica si el valor que retorna la función es menor que 0, significa que el mensaje no se pudo enviar satisfactoriamente.
+    if (sent_len < 0) {
+        perror("Error al enviar DHCPOFFER");
+    } else {
+        printf("DHCPOFFER enviado a %s\n", inet_ntoa(client_addr->sin_addr));
+    }
+}
+
+
 
 // Función para procesar los mensajes DHCP según el tipo
-void process_dhcp_message(int message_type, struct dhcp_message *msg) {
+void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg) {
     switch (message_type) {
         case 1: 
             printf("Mensaje DHCPDISCOVER recibido\n");
+            send_dhcp_offer(fd, client_addr, client_len, msg); 
             break;
         default:
             printf("Mensaje DHCP desconocido o no soportado, tipo: %d\n", message_type);
@@ -177,7 +230,8 @@ int main(){
         message_type = get_dhcp_message_type(msg);
 
         // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente
-        process_dhcp_message(message_type, msg);
+        process_dhcp_message(message_type, fd, &client_addr, client_len, msg);
+
     }
 
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos
