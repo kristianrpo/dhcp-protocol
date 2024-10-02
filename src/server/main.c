@@ -27,8 +27,7 @@ struct dhcp_message {
     uint8_t options[312];   // Opciones que personalizan en comportamiento del protocolo, se incluye información como el tipo de mensaje (opción 53), identificador del servidor (opción 54), parametros de red solicitados por el cliente (opción 55), etc.
 };
 
-
-// Metodo para retornar el tipo de error a la hora de crear un socket.
+// Función para retornar el tipo de error a la hora de crear un socket.
 void error(const char *msg) {
     switch (errno) {
         case EACCES:
@@ -44,7 +43,64 @@ void error(const char *msg) {
     exit(EXIT_FAILURE);  
 }
 
-// Metodo para obtener el mensaje DHCP para conocer la opción a realizar.
+// Función para inicializar el socket.
+int initialize_socket() {
+    // Definición de variable que va a almacenar el socker.
+    int fd;
+
+    // Definimos la estructura que va a almacenar la ip y el puerto del servidor DHCP (ESTA ESTRUCTURA ESTA HECHA PARA ALMACENAR DIRECCIONES DE RED EN IPV4 (sockaddr_in)) y le damos de nombre server_addr.
+    struct sockaddr_in server_addr; 
+
+    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
+    socklen_t server_len = sizeof(server_addr);
+
+    // Asignación a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
+    fd = socket(AF_INET,SOCK_DGRAM,0); 
+
+    // Si el socket no se pudo crear satisfactoriamente, llamamos a la función de error para recibir el mensaje completo de fallo al crear un socket.
+    if(fd<0){
+        error("No se pudo crear el socket");
+    }
+
+    // Configuración de la estructura donde se va a almacenar la ip y el puerto.
+    // Configuración de que el socket va a almacenar una IPV4.
+    server_addr.sin_family = AF_INET;
+
+    // Configuración de que el socket va a tener asociado el puerto 1067 para DHCP. htons tranforma este numero en decimal a bits de red.
+    server_addr.sin_port = htons(DHCP_SERVER_PORT);
+
+    // Configuración de la dirección IP donde el socket va a estar escuchando conexiones (el servidor para todas sus ips relacionadas con el puerto especificado va a estar escuchando). htonl tambien convierte a formato adecuado.
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
+
+
+    // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
+    // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
+    if (bind(fd, (struct sockaddr *)&server_addr, server_len) < 0) {
+        perror("Error en bind");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Mensaje de confirmación de que el socket fue configurado e inicializado correctamente 
+    printf("Socket inicializado y escuchando en el puerto %d\n", DHCP_SERVER_PORT);
+    return fd;
+}
+
+// Función para recibir un mensaje del socket
+ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *client_addr, socklen_t *client_len) {
+    
+    // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente
+    // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer.
+    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)client_addr, client_len);
+
+    // Comprueba si ocurrió un error durante la recepción del mensaje.
+    if (msg_len < 0) {
+        error("Error al recibir mensaje");
+    }
+    return msg_len;
+}
+
+// Función para obtener el mensaje DHCP para conocer la opción a realizar.
 int get_dhcp_message_type(struct dhcp_message *msg) {
     // Definición de la variable de control para recorrer el campo de options.
     int i = 0;
@@ -59,62 +115,59 @@ int get_dhcp_message_type(struct dhcp_message *msg) {
         if (msg->options[i] == 53) {
             // Aseguramos que la longitud del mensaje DHCP denota que el mismo existe.
             if (msg->options[i + 1] == 1) {
-                return msg->options[i + 2];  // El valor del tipo de mensaje está en el tercer byte.
+                // El valor del tipo de mensaje está en el tercer byte.
+                return msg->options[i + 2]; 
+                
             } else {
-                return -1;  // Si la longitud del mensaje DHCP no es valida, se retorna 'error'.
+                // Si la longitud del mensaje DHCP no es valida, se retorna 'error'.
+                return -1;
             }
         }
         
         // Avanzamos al siguiente campo de opciones, se avanza de esta manera puesto que cada opcion mide diferente, asi que se obtiene la siguiente opción de manera 'dinamica'.
-        i += msg->options[i + 1] + 2;  // Saltamos el código de opción, la longitud, y el valor de la opción.
+        i += msg->options[i + 1] + 2;
     }
-    
-    return -1;  // Si no se encuentra la opción 53.
+    // Si no se encuentra la opción 53, se devuelve un error.
+    return -1;  
 }
 
 
+// Función para procesar los mensajes DHCP según el tipo
+void process_dhcp_message(int message_type, struct dhcp_message *msg) {
+    switch (message_type) {
+        case 1: 
+            printf("Mensaje DHCPDISCOVER recibido\n");
+            break;
+        default:
+            printf("Mensaje DHCP desconocido o no soportado, tipo: %d\n", message_type);
+            break;
+    }
+}
+
 int main(){
-    struct sockaddr_in server_addr; // Definimos la estructura que va a almacenar la ip y el puerto del servidor DHCP (ESTA ESTRUCTURA ESTA HECHA PARA ALMACENAR DIRECCIONES DE RED EN IPV4 (sockaddr_in)) y le damos de nombre server_addr.
-    struct sockaddr_in client_addr;  // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
-    socklen_t server_len = sizeof(server_addr); // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
-    socklen_t client_len = sizeof(client_addr); // Tamaño de la dirección del clinete (para saber cuantos bytes se debe leer o escribir en la estructura).
-    char buffer[BUFFER_SIZE]; // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
-    int fd; // Definición de variable que va a almacenar el socker.
-    int message_type;
-    fd = socket(AF_INET,SOCK_DGRAM,0); // Asignación a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
 
-    // Si el socket no se pudo crear satisfactoriamente, llamamos a la función de error para recibir el mensaje completo de fallo al crear un socket.
-    if(fd<0){
-        error("No se pudo crear el socket");
-    }
+    // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
+    char buffer[BUFFER_SIZE]; 
 
-    // Configuración de la estructura donde se va a almacenar la ip y el puerto.
-    server_addr.sin_family = AF_INET; // Configuración de que el socket va a almacenar una IPV4.
-    server_addr.sin_port = htons(DHCP_SERVER_PORT); // Configuración de que el socket va a tener asociado el puerto 1067 para DHCP. htons tranforma este numero en decimal a bits de red.
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY); // Configuración de la dirección IP donde el socket va a estar escuchando conexiones (el servidor para todas sus ips relacionadas con el puerto especificado va a estar escuchando). htonl tambien convierte a formato adecuado.
+    // Definición de variables: fd, que contiene el socket creado y el message_type, que almacena el tipo de mensaje recibido enviado desde el cliente
+    int fd, message_type;
 
+    // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
+    struct sockaddr_in client_addr;
 
-    // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
-    // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
-    if (bind(fd, (struct sockaddr *)&server_addr, server_len) < 0) {
-        perror("Error en bind");
-        exit(EXIT_FAILURE);
-    }
+    // Tamaño de la dirección del clinete (para saber cuantos bytes se debe leer o escribir en la estructura).
+    socklen_t client_len = sizeof(client_addr);
+
+    // Inicializar el socket
+    fd = initialize_socket();
 
     // Al utilizar UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, está siempre listo para recibir mensajes, no como TCP, que se debe establecer una conexión con el cliente y no siempre está escuchando
-    // Esperar y recibir datagrama (usamos recvfrom porque estamos en UDP). Este datagrama contiene el mensaje e información relacionada para poder llevar a cabo una acción
     printf("Esperando mensajes de clientes DHCP...\n");
+
     // Este bucle hace que el servidor DHCP este constantemente esperando recibir mensajes
     while (1) {
-
-        // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente
-        // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer.
-        ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&client_addr, &client_len);
-
-        // Comprueba si ocurrió un error durante la recepción del mensaje.
-        if (msg_len < 0) {
-            error("Error al recibir mensaje");
-        }
+        // Recibir mensaje del cliente
+        ssize_t msg_len = receive_message(fd, buffer, &client_addr, &client_len);
 
         // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
         // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura
@@ -122,11 +175,9 @@ int main(){
 
         // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
         message_type = get_dhcp_message_type(msg);
-        
-        if (message_type == 1) {
-            printf("Mensaje DHCPDISCOVER recibido\n");
-        }
 
+        // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente
+        process_dhcp_message(message_type, msg);
     }
 
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos
