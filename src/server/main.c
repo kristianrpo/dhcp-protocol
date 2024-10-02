@@ -10,25 +10,25 @@
 #define BUFFER_SIZE 576
 
 struct dhcp_message {
-    uint8_t op;       
-    uint8_t htype;
-    uint8_t hlen;
-    uint8_t hops;
-    uint32_t xid;
-    uint16_t secs;
-    uint16_t flags;
-    uint32_t ciaddr;
-    uint32_t yiaddr;
-    uint32_t siaddr;
-    uint32_t giaddr;
-    uint8_t chaddr[16];
-    uint8_t sname[64];
-    uint8_t file[128];
-    uint8_t options[312];
+    uint8_t op;             // Define el tipo de operacion del paquete, =1 si es una solicitud proveniente de un cliente, =2 si es una respuesta proveniente del servidor.      
+    uint8_t htype;          // Define el tipo de hardware que se está utilizando, =1 si es Ethernet (el mas comun). 
+    uint8_t hlen;           // Indica el tamaño de la dirección MAC del cliente, =6 longitud de la dirección MAC en Ethernet en bytes.
+    uint8_t hops;           // Indica el número de saltos que ha dado el paquete, es decir la cantidad de veces que ha sido reenviado por un agente de retransmisión en camino al servidor.
+    uint32_t xid;           // Identificador de transacción, es un número aleatorio que se genera para identificar la transacción entre el cliente y el servidor.
+    uint16_t secs;          // Indica la cantidad de segundos que han pasado desde que el cliente comenzó a buscar una dirección IP.
+    uint16_t flags;         // Si está activo, indica que el cliente está esperando la respuesta por broadcast porque no tiene una dirección IP asignada.
+    uint32_t ciaddr;        // La dirección IP del cliente, si la tiene o 0.0.0.0 si aún no la tiene.
+    uint32_t yiaddr;        // La dirección IP que el servidor le ofrece al cliente.
+    uint32_t siaddr;        // La dirección IP del servidor que está ofreciendo la dirección IP al cliente.
+    uint32_t giaddr;        // La dirección IP del agente de retransmisión que reenvió el paquete si el cliente y el servidor están en redes diferentes.
+    uint8_t chaddr[16];     // Dirección MAC del cliente, generalmente de 6 bytes en Ethernet pero definida con 16 para posibles extensiones.
+    uint8_t sname[64];      // Nombre del servidor, generalmente no se usa.
+    uint8_t file[128];      // Nombre del archivo de arranque que el cliente deberia usar al iniciar, se usa solo cuando los dispositivos necesitan un arranqye remoto o boot desde una imagen de red.
+    uint8_t options[312];   // Opciones que personalizan en comportamiento del protocolo, se incluye información como el tipo de mensaje (opción 53), identificador del servidor (opción 54), parametros de red solicitados por el cliente (opción 55), etc.
 };
 
 
-// Metodo para retornar el tipo de error a la hora de crear un socket
+// Metodo para retornar el tipo de error a la hora de crear un socket.
 void error(const char *msg) {
     switch (errno) {
         case EACCES:
@@ -44,6 +44,35 @@ void error(const char *msg) {
     exit(EXIT_FAILURE);  
 }
 
+// Metodo para obtener el mensaje DHCP para conocer la opción a realizar.
+int get_dhcp_message_type(struct dhcp_message *msg) {
+    // Definición de la variable de control para recorrer el campo de options.
+    int i = 0;
+    // Recorremos el campo de 'options' del datagrama recibido, options puede tener una cantidad de opciones variable, por lo tanto, tenemos que recorrer options hasta encontrar la opción 53, que es la que contiene el mensaje para la acción a realizar. Se recorre hasta 312 porque el campo options como maximo puede medir 312 bytes según estandarización.
+    while (i < 312) {
+        // Si encontramos el fin de las opciones (0xFF), salimos del ciclo.
+        if (msg->options[i] == 255) {
+            break;
+        }
+        
+        // Revisar si estamos en la opción 53 (Tipo de mensaje DHCP).
+        if (msg->options[i] == 53) {
+            // Aseguramos que la longitud del mensaje DHCP denota que el mismo existe.
+            if (msg->options[i + 1] == 1) {
+                return msg->options[i + 2];  // El valor del tipo de mensaje está en el tercer byte.
+            } else {
+                return -1;  // Si la longitud del mensaje DHCP no es valida, se retorna 'error'.
+            }
+        }
+        
+        // Avanzamos al siguiente campo de opciones, se avanza de esta manera puesto que cada opcion mide diferente, asi que se obtiene la siguiente opción de manera 'dinamica'.
+        i += msg->options[i + 1] + 2;  // Saltamos el código de opción, la longitud, y el valor de la opción.
+    }
+    
+    return -1;  // Si no se encuentra la opción 53.
+}
+
+
 int main(){
     struct sockaddr_in server_addr; // Definimos la estructura que va a almacenar la ip y el puerto del servidor DHCP (ESTA ESTRUCTURA ESTA HECHA PARA ALMACENAR DIRECCIONES DE RED EN IPV4 (sockaddr_in)) y le damos de nombre server_addr.
     struct sockaddr_in client_addr;  // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
@@ -51,6 +80,7 @@ int main(){
     socklen_t client_len = sizeof(client_addr); // Tamaño de la dirección del clinete (para saber cuantos bytes se debe leer o escribir en la estructura).
     char buffer[BUFFER_SIZE]; // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     int fd; // Definición de variable que va a almacenar el socker.
+    int message_type;
     fd = socket(AF_INET,SOCK_DGRAM,0); // Asignación a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
 
     // Si el socket no se pudo crear satisfactoriamente, llamamos a la función de error para recibir el mensaje completo de fallo al crear un socket.
@@ -88,12 +118,20 @@ int main(){
 
         printf("Mensaje recibido de cliente: %s\n", buffer);
 
-        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, c como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
-        // Convertir el buffer a un mensaje DHCP
+        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
+        // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura
         struct dhcp_message *msg = (struct dhcp_message *)buffer;
 
-        
+        // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
+        message_type = get_dhcp_message_type(msg);
+
+        int message_type = get_dhcp_message_type(msg);
+        if (message_type == 1) {
+            printf("Mensaje DHCPDISCOVER recibido\n");
+        }
+
     }
+
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos
     close(fd);
     return 0;
