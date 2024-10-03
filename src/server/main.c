@@ -289,9 +289,21 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     offer_msg.options[19] = 8;      // 8 bits.
     offer_msg.options[20] = 8;      // 8 bits.
 
+    // Se define el campo que se especifica la duración del arrendamiento.
+    // Se define el codigo de la opción que determina la duración del arrendamiento de la IP.
+    offer_msg.options[22] = 51;
+
+    // Se define la longitud que va a tener el campo de la duración del lease (4 bytes).
+    offer_msg.options[23] = 4;
+
+    // Se cambia el valor en orden de red para ser mandado a través de la misma en el mensaje.
+    uint32_t lease_time = htonl(LEASE_DURATION);
+
+    // Se establece en los siguientes 4 campos el valor de el tiempo de arrendamiento.
+    memcpy(&offer_msg.options[24], &lease_time, 4);
 
     // Se define el campo que especifica que se llegó al final de las opciones.
-    offer_msg.options[21] = 255; 
+    offer_msg.options[28] = 255; 
     
     // Se utiliza la función sendto para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
     ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)client_addr, client_len);
