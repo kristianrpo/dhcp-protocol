@@ -14,6 +14,7 @@
 #define MAX_LEASES 50
 #define START_IP "192.168.0.21"
 #define END_IP "192.168.0.71"
+#define LEASE_DURATION 10
 
 struct lease_entry {
     uint8_t mac_addr[6];  // Dirección MAC del cliente
@@ -41,19 +42,9 @@ struct dhcp_message {
     uint8_t options[312];   // Opciones que personalizan en comportamiento del protocolo, se incluye información como el tipo de mensaje (opción 53), identificador del servidor (opción 54), parametros de red solicitados por el cliente (opción 55), etc.
 };
 
-// Función para retornar el tipo de error a la hora de crear un socket.
+// Función para manejar errores utilizando fprintf
 void error(const char *msg) {
-    switch (errno) {
-        case EACCES:
-            fprintf(stderr, "Error: %s. Permiso denegado.\n", msg);
-            break;
-        case EPROTONOSUPPORT:
-            fprintf(stderr, "Error: %s. Protocolo no soportado.\n", msg);
-            break;
-        default:
-            fprintf(stderr, "Error: %s. Código de error desconocido: %d.\n", msg, errno);
-            break;
-    }
+    fprintf(stderr, "%s: %s\n", msg, strerror(errno));
     exit(EXIT_FAILURE);  
 }
 
@@ -73,7 +64,7 @@ int initialize_socket() {
 
     // Si el socket no se pudo crear satisfactoriamente, llamamos a la función de error para recibir el mensaje completo de fallo al crear un socket.
     if(fd<0){
-        error("No se pudo crear el socket");
+         error("No se pudo crear el socket");
     }
 
     // Configuración de la estructura donde se va a almacenar la ip y el puerto.
@@ -90,7 +81,7 @@ int initialize_socket() {
     // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
     if (bind(fd, (struct sockaddr *)&server_addr, server_len) < 0) {
-        perror("Error en bind");
+        error("Error en bind");
         close(fd);
         exit(EXIT_FAILURE);
     }
@@ -153,7 +144,7 @@ uint32_t ip_to_int(const char *ip) {
     // Se convierte la dirección ip a un formato binario con la función inet_aton
     inet_aton(ip, &addr);
 
-    // Se retorna el valor convertido a int.
+    // Se retorna el valor convertido a int, o mejor dicho, en formato host, peritiendo asi realizar operaciones con este valor.
     return ntohl(addr.s_addr);
 }
 
@@ -162,10 +153,10 @@ void int_to_ip(uint32_t ip, char *buffer) {
     // Se define estructura in_addr para manejar direcciones IP
     struct in_addr addr;
 
-    // Convierte de formato de host a formato de red (binario)
+    // Convierte de formato de host a formato de red. Es necesario hacer esto ya que este formato es requerido para ser enviada la ip posteriormente al cliente a través de la red.
     addr.s_addr = htonl(ip);
 
-    // Convierte de binario a la cadena de chats
+    // Convierte de binario a la cadena de la ip y lo almacena en el buffer.
     strcpy(buffer, inet_ntoa(addr));
 }
 
@@ -205,15 +196,14 @@ uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint8_t *mac
             leases[i].lease_start = time(NULL);
 
             // Se define la duración del arrendamiento.
-            leases[i].lease_duration = 3600;
+            leases[i].lease_duration = LEASE_DURATION;
 
-            // Se retorna la ip asignada para verificaciónes.
+            // Se retorna la ip asignada.
             return leases[i].ip_addr;
         }
     }
     return -1;
 }
-
 
 // Función para enviar un DHCPOFFER.
 void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
@@ -240,9 +230,8 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     uint32_t assigned_ip = assign_ip_to_client(leases, discover_msg->chaddr);
 
     if(assigned_ip<0){
-        perror("Error al enviar DHCPOFFER");
+        error("Error al definir la IP para el cliente");
     }
-
 
     // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida
     offer_msg.yiaddr = htonl(assigned_ip);
@@ -268,13 +257,11 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
 
     // Se verifica si el valor que retorna la función es menor que 0, significa que el mensaje no se pudo enviar satisfactoriamente.
     if (sent_len < 0) {
-        perror("Error al enviar DHCPOFFER");
+        error("Error al enviar DHCPOFFER");
     } else {
         printf("DHCPOFFER enviado a %s\n", inet_ntoa(client_addr->sin_addr));
     }
 }
-
-
 
 // Función para procesar los mensajes DHCP según el tipo
 void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
@@ -326,6 +313,10 @@ int main(){
 
         // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
         message_type = get_dhcp_message_type(msg);
+
+        if(message_type<0){
+            error("Error al identificar el tipo de mensaje");
+        }
 
         // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente
         process_dhcp_message(message_type, fd, &client_addr, client_len, msg, leases);
