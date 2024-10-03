@@ -81,7 +81,7 @@ int initialize_socket() {
     // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
     if (bind(fd, (struct sockaddr *)&server_addr, server_len) < 0) {
-        error("Error en bind");
+        error("Error al enlazar el socket con la estructura de red definida");
         close(fd);
         exit(EXIT_FAILURE);
     }
@@ -230,27 +230,68 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     uint32_t assigned_ip = assign_ip_to_client(leases, discover_msg->chaddr);
 
     if(assigned_ip<0){
-        error("Error al definir la IP para el cliente");
+        error("Error al definir la IP para el cliente: No hay IPs disponibles");
     }
 
-    // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida
+    // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida.
     offer_msg.yiaddr = htonl(assigned_ip);
 
-    // Se define la dirección MAC del cliente.
+    // Se define la dirección MAC del cliente en la estructura del mensaje.
     memcpy(offer_msg.chaddr, discover_msg->chaddr, 16); 
     
     // Configuramos el campo de opciones donde se especifica los parametros del mensaje que se le está mandando al cliente.
-    // Se define la opción 53 que permite ubicar el lugar donde se describe el tipo del mensaje
+    // Se define la opción 53 que permite ubicar el lugar donde se describe el tipo del mensaje.
     offer_msg.options[0] = 53;
 
-    // Se define la logitud del tipo de mensaje
+    // Se define la logitud del tipo de mensaje.
     offer_msg.options[1] = 1;
 
     // Se establece el ID del tipo de mensaje que se está realizando, que en este caso es un DHCPOFFER.
     offer_msg.options[2] = 2;
 
+    // Se define el campo de la máscara de red (255.255.255.0).
+    // Se define el codigo de la opción que dice que se va a escribir la mascara de red.
+    offer_msg.options[3] = 1;
+
+    // Se define la longitud de la mascara de red, que son 4 bytes para IPV4.
+    offer_msg.options[4] = 4;
+
+    // Se define la mascara de red.
+    offer_msg.options[5] = 255;     // 8 bits.
+    offer_msg.options[6] = 255;     // 8 bits.
+    offer_msg.options[7] = 255;     // 8 bits.
+    offer_msg.options[8] = 0;       // 8 bits.
+
+
+    // Se define el campo del gateway predeterminado (192.168.0.1).
+    // Se define el codigo de la opción que dice que se va a escribir el gateway predeterminado.
+    offer_msg.options[9] = 3;
+
+    // Se define la longitud del gateway, que son 4 bytes para IPV4.
+    offer_msg.options[10] = 4;
+
+    // Se define el gateway (IP)
+    offer_msg.options[11] = 192;    // 8 bits.
+    offer_msg.options[12] = 168;    // 8 bits.
+    offer_msg.options[13] = 0;      // 8 bits.
+    offer_msg.options[14] = 1;      // 8 bits.
+
+    // Se define el servidores DNS (8.8.8.8) (es el de google publico).
+    // Se define el codigo de la opción que dice que se va a escribir un servidor DNS.
+    offer_msg.options[15] = 6;
+
+    // Se define la longitud de la ip del servidor DNS, que son 4 bytes para IPV4.
+    offer_msg.options[16] = 4;
+
+    // Se define la IP del servidor DNS.
+    offer_msg.options[17] = 8;      // 8 bits.
+    offer_msg.options[18] = 8;      // 8 bits.
+    offer_msg.options[19] = 8;      // 8 bits.
+    offer_msg.options[20] = 8;      // 8 bits.
+
+
     // Se define el campo que especifica que se llegó al final de las opciones.
-    offer_msg.options[3] = 255; 
+    offer_msg.options[21] = 255; 
     
     // Se utiliza la función sendto para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
     ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)client_addr, client_len);
