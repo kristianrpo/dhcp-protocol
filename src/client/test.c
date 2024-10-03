@@ -49,6 +49,35 @@ int get_dhcp_message_type(struct dhcp_message *msg) {
     return -1;  // No se encontró la opción 53
 }
 
+void print_network_config(struct dhcp_message *offer_msg) {
+    int i = 0;
+    struct in_addr addr;
+    
+    while (i < 312) {
+        uint8_t option = offer_msg->options[i];
+        uint8_t len = offer_msg->options[i + 1];
+
+        if (option == 1) {  // Máscara de red
+            memcpy(&addr, &offer_msg->options[i + 2], 4);
+            printf("Máscara de red: %s\n", inet_ntoa(addr));
+        } else if (option == 3) {  // Gateway predeterminado
+            memcpy(&addr, &offer_msg->options[i + 2], 4);
+            printf("Gateway: %s\n", inet_ntoa(addr));
+        } else if (option == 6) {  // Servidor DNS
+            memcpy(&addr, &offer_msg->options[i + 2], 4);
+            printf("Servidor DNS: %s\n", inet_ntoa(addr));
+        }
+
+        // Fin de las opciones (255)
+        if (option == 255) {
+            break;
+        }
+
+        // Avanzar al siguiente campo de opciones
+        i += len + 2;
+    }
+}
+
 int main() {
     struct sockaddr_in client_addr, server_addr;
     int sockfd;
@@ -124,6 +153,8 @@ int main() {
         if (dhcp_type == 2) {  // 2 es el valor de DHCPOFFER
             printf("Mensaje DHCPOFFER recibido correctamente\n");
             printf("IP ofrecida: %s\n", inet_ntoa(*(struct in_addr *)&offer_msg->yiaddr));
+
+            print_network_config(offer_msg);
         } else {
             printf("No se recibió un DHCPOFFER. Tipo de mensaje recibido: %d\n", dhcp_type);
         }
