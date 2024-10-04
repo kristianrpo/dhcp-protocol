@@ -221,46 +221,65 @@ void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype,
 }
 
 
+// Función para configurar el tipo de mensaje en las opciones del mensaje DHCP
 void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, uint8_t option_value) {
-    // Configura el tipo de mensaje en las opciones del mensaje DHCP.
-    options[*index] = option_type;        // Tipo de opción
-    options[*index + 1] = option_length;  // Longitud de la opción 
-    options[*index + 2] = option_value;   // Valor de la opción
+    // Configura el tipo de mensaje en las opciones del mensaje DHCP en el índice especificado.
+    options[*index] = option_type;    
+    // Asigna la longitud de la opciónn, para indicar la longitud del valor a enviar, en el siguiente campo.
+    options[*index + 1] = option_length; 
+    // Especifica el valor de la opción.
+    options[*index + 2] = option_value;
 
-    // Incrementar el índice para la siguiente opción.
-    *index += 3; // Se avanza 3 posiciones: 1 para el tipo, 1 para la longitud, y 1 para el valor.
+    // Incrementa el índice para la siguiente opción, se avanzan 3 posiciones, 1 para el tipo, 1 para la longitud, y 1 para el valor.
+    *index += 3; 
 }
 
 // Función para establecer la máscara de subred en el mensaje DHCP
 void set_subnet_mask(uint8_t *options, int *index) {
-    options[*index] = 1;  // Código de opción: Máscara de red
-    options[*index + 1] = 4;  // Longitud: 4 bytes para IPv4
+    // Establece el tipo de opción a "máscara de subred" en el índice actual (opción 1).
+    options[*index] = 1; 
+    // Establece la longitud de la máscara de subred a 4 bytes (para IPv4).
+    options[*index + 1] = 4; 
+    // Máscara de subred
     options[*index + 2] = 255;
     options[*index + 3] = 255;
     options[*index + 4] = 255;
     options[*index + 5] = 0;
-    *index += 6;  // Actualiza el índice para las siguientes opciones
+    
+    // Actualiza el índice para la siguiente opción, se avanzan 6 posiciones.
+    *index += 6;
 }
 
-// Función para establecer el gateway en el mensaje DHCP
+// Función para establecer el gateway en las opciones del mensaje DHCP
 void set_gateway(uint8_t *options, int *index) {
-    options[*index] = 3;  // Código de opción: Gateway
-    options[*index + 1] = 4;  // Longitud: 4 bytes
+    // Establece el tipo de opción a "gateway" en el índice actual (opción 3).
+    options[*index] = 3; 
+    // Establece la longitud de la dirección del gateway a 4 bytes (para IPv4).
+    options[*index + 1] = 4;  
+    // Configura la dirección del gateway (192.168.0.1).
     options[*index + 2] = 192;
     options[*index + 3] = 168;
     options[*index + 4] = 0;
     options[*index + 5] = 1;
-    *index += 6;  // Actualiza el índice
+    
+    // Incrementa el índice para la siguiente opción, avanzando 6 posiciones.
+    *index += 6; 
 }
 
-// Función para establecer el servidor DNS en el mensaje DHCP
+
+// Función para establecer el servidor DNS en las opciones del mensaje DHCP
 void set_dns_server(uint8_t *options, int *index) {
-    options[*index] = 6;  // Código de opción: Servidor DNS
-    options[*index + 1] = 4;  // Longitud: 4 bytes
+    // Establece el tipo de opción a "DNS server" en el índice actual (opción 6).
+    options[*index] = 6; 
+    // Establece la longitud de la dirección del servidor DNS a 4 bytes (para IPv4).
+    options[*index + 1] = 4;
+    // Configura la dirección del servidor DNS (8.8.8.8).
     options[*index + 2] = 8;
     options[*index + 3] = 8;
     options[*index + 4] = 8;
     options[*index + 5] = 8;
+    
+    // Incrementa el índice para la siguiente opción, avanzando 6 posiciones.
     *index += 6;  // Actualiza el índice
 }
 
@@ -289,15 +308,17 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
 
      // Índice para comenzar a llenar las opciones
     int index = 0;
-    set_type_message(offer_msg.options, &index, 53, 1, 2);  // 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER
 
-    // Configurar la máscara de subred
+    // Llama a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER
+    set_type_message(offer_msg.options, &index, 53, 1, 2); 
+
+    // Llama a la función que configura la máscara de subred
     set_subnet_mask(offer_msg.options, &index);
 
-    // Configurar la gateway
+    // Llama a la función que configura el gateway
     set_gateway(offer_msg.options, &index);
 
-    // Configurar el servidor DNS
+    // Llama a la función que configura el servidor DNS
     set_dns_server(offer_msg.options, &index);
 
     // Se define el campo que se especifica la duración del arrendamiento.
