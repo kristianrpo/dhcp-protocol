@@ -205,26 +205,70 @@ uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint8_t *mac
     return -1;
 }
 
+// Función para configurar los campos principales del mensaje DHCP
+void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype, uint8_t hlen, uint32_t xid, uint32_t yiaddr, uint8_t *chaddr) {
+    // Inicializar el mensaje DHCP con ceros
+    memset(msg, 0, sizeof(struct dhcp_message));
+
+    // Configurar los campos principales del mensaje DHCP
+    msg->op = op;          // Tipo de operación (1 para solicitud, 2 para respuesta).
+    msg->htype = htype;    // Tipo de hardware (1 para Ethernet).
+    msg->hlen = hlen;      // Longitud de la dirección MAC (6 bytes para Ethernet).
+    msg->xid = xid;        // ID de transacción.
+    msg->yiaddr = yiaddr;  // IP asignada al cliente.
+
+    memcpy(msg->chaddr, chaddr, 16); 
+}
+
+
+void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, uint8_t option_value) {
+    // Configura el tipo de mensaje en las opciones del mensaje DHCP.
+    options[*index] = option_type;        // Tipo de opción
+    options[*index + 1] = option_length;  // Longitud de la opción 
+    options[*index + 2] = option_value;   // Valor de la opción
+
+    // Incrementar el índice para la siguiente opción.
+    *index += 3; // Se avanza 3 posiciones: 1 para el tipo, 1 para la longitud, y 1 para el valor.
+}
+
+// Función para establecer la máscara de subred en el mensaje DHCP
+void set_subnet_mask(uint8_t *options, int *index) {
+    options[*index] = 1;  // Código de opción: Máscara de red
+    options[*index + 1] = 4;  // Longitud: 4 bytes para IPv4
+    options[*index + 2] = 255;
+    options[*index + 3] = 255;
+    options[*index + 4] = 255;
+    options[*index + 5] = 0;
+    *index += 6;  // Actualiza el índice para las siguientes opciones
+}
+
+// Función para establecer el gateway en el mensaje DHCP
+void set_gateway(uint8_t *options, int *index) {
+    options[*index] = 3;  // Código de opción: Gateway
+    options[*index + 1] = 4;  // Longitud: 4 bytes
+    options[*index + 2] = 192;
+    options[*index + 3] = 168;
+    options[*index + 4] = 0;
+    options[*index + 5] = 1;
+    *index += 6;  // Actualiza el índice
+}
+
+// Función para establecer el servidor DNS en el mensaje DHCP
+void set_dns_server(uint8_t *options, int *index) {
+    options[*index] = 6;  // Código de opción: Servidor DNS
+    options[*index + 1] = 4;  // Longitud: 4 bytes
+    options[*index + 2] = 8;
+    options[*index + 3] = 8;
+    options[*index + 4] = 8;
+    options[*index + 5] = 8;
+    *index += 6;  // Actualiza el índice
+}
+
+
 // Función para enviar un DHCPOFFER.
 void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
     // Se define la estructura que va a almacenar el mensaje de oferta que se va a enviar al cliente.
     struct dhcp_message offer_msg;
-
-    // Llenamos la estructura que contiene el mensaje a enviar de 0's con el fin de reservar/limpiar el espacio de memoria que va a tener la información relacionada a cada campo del datagrama
-    memset(&offer_msg, 0, sizeof(offer_msg));
-    
-    // Se llena los campos del datagrama con la información pertinente.
-    // Se establece el campo con el valor de '2', indicando que el mensaje fué enviado por parte de un servidor, lo que indica una respuesta.
-    offer_msg.op = 2;
-
-    // Se establece el mismo protocolo utilizado por el cliente para enviar el mensaje, en este caso, utilizandose el protocolo ethernet, permitiendo a dispositivos comunicarse entre si en una red.
-    offer_msg.htype = discover_msg->htype;
-
-    // Se define el tamaño de la dirección de la dirección MAC que es el mismo del DHCPDISCOVER.
-    offer_msg.hlen = discover_msg->hlen;
-
-    // Identificador aleatorio que define la comunicación especifica que se esta llevando a cabo entre cliente y servidor, es la misma que DHCPDISCOVER.
-    offer_msg.xid = discover_msg->xid;
 
     // Se define la IP que se le va a ofrecer al cliente para que la utilice en la red.
     uint32_t assigned_ip = assign_ip_to_client(leases, discover_msg->chaddr);
@@ -233,77 +277,44 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
         error("Error al definir la IP para el cliente: No hay IPs disponibles");
     }
 
+    // Se llama a la función que configura los campos principales del mensaje DHCP
+    // Se llena los campos del datagrama con la información pertinente.
+    // Se establece el campo con el valor de '2', indicando que el mensaje fué enviado por parte de un servidor, lo que indica una respuesta.
+    // Se establece el mismo protocolo utilizado por el cliente para enviar el mensaje, en este caso, utilizandose el protocolo ethernet, permitiendo a dispositivos comunicarse entre si en una red.
+    // Se define el tamaño de la dirección de la dirección MAC que es el mismo del DHCPDISCOVER.
+    // Se define el identificador aleatorio que establece la comunicación especifica que se esta llevando a cabo entre cliente y servidor, es la misma que DHCPDISCOVER.
     // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida.
-    offer_msg.yiaddr = htonl(assigned_ip);
-
     // Se define la dirección MAC del cliente en la estructura del mensaje.
-    memcpy(offer_msg.chaddr, discover_msg->chaddr, 16); 
-    
-    // Configuramos el campo de opciones donde se especifica los parametros del mensaje que se le está mandando al cliente.
-    // Se define la opción 53 que permite ubicar el lugar donde se describe el tipo del mensaje.
-    offer_msg.options[0] = 53;
+    configure_dhcp_message(&offer_msg, 2, discover_msg->htype, discover_msg->hlen, discover_msg->xid, htonl(assigned_ip), discover_msg->chaddr);
 
-    // Se define la logitud del tipo de mensaje.
-    offer_msg.options[1] = 1;
+     // Índice para comenzar a llenar las opciones
+    int index = 0;
+    set_type_message(offer_msg.options, &index, 53, 1, 2);  // 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER
 
-    // Se establece el ID del tipo de mensaje que se está realizando, que en este caso es un DHCPOFFER.
-    offer_msg.options[2] = 2;
+    // Configurar la máscara de subred
+    set_subnet_mask(offer_msg.options, &index);
 
-    // Se define el campo de la máscara de red (255.255.255.0).
-    // Se define el codigo de la opción que dice que se va a escribir la mascara de red.
-    offer_msg.options[3] = 1;
+    // Configurar la gateway
+    set_gateway(offer_msg.options, &index);
 
-    // Se define la longitud de la mascara de red, que son 4 bytes para IPV4.
-    offer_msg.options[4] = 4;
-
-    // Se define la mascara de red.
-    offer_msg.options[5] = 255;     // 8 bits.
-    offer_msg.options[6] = 255;     // 8 bits.
-    offer_msg.options[7] = 255;     // 8 bits.
-    offer_msg.options[8] = 0;       // 8 bits.
-
-
-    // Se define el campo del gateway predeterminado (192.168.0.1).
-    // Se define el codigo de la opción que dice que se va a escribir el gateway predeterminado.
-    offer_msg.options[9] = 3;
-
-    // Se define la longitud del gateway, que son 4 bytes para IPV4.
-    offer_msg.options[10] = 4;
-
-    // Se define el gateway (IP)
-    offer_msg.options[11] = 192;    // 8 bits.
-    offer_msg.options[12] = 168;    // 8 bits.
-    offer_msg.options[13] = 0;      // 8 bits.
-    offer_msg.options[14] = 1;      // 8 bits.
-
-    // Se define el servidores DNS (8.8.8.8) (es el de google publico).
-    // Se define el codigo de la opción que dice que se va a escribir un servidor DNS.
-    offer_msg.options[15] = 6;
-
-    // Se define la longitud de la ip del servidor DNS, que son 4 bytes para IPV4.
-    offer_msg.options[16] = 4;
-
-    // Se define la IP del servidor DNS.
-    offer_msg.options[17] = 8;      // 8 bits.
-    offer_msg.options[18] = 8;      // 8 bits.
-    offer_msg.options[19] = 8;      // 8 bits.
-    offer_msg.options[20] = 8;      // 8 bits.
+    // Configurar el servidor DNS
+    set_dns_server(offer_msg.options, &index);
 
     // Se define el campo que se especifica la duración del arrendamiento.
     // Se define el codigo de la opción que determina la duración del arrendamiento de la IP.
-    offer_msg.options[22] = 51;
+    offer_msg.options[index] = 51;
 
     // Se define la longitud que va a tener el campo de la duración del lease (4 bytes).
-    offer_msg.options[23] = 4;
+    offer_msg.options[index+1] = 4;
 
     // Se cambia el valor en orden de red para ser mandado a través de la misma en el mensaje.
     uint32_t lease_time = htonl(LEASE_DURATION);
 
     // Se establece en los siguientes 4 campos el valor de el tiempo de arrendamiento.
-    memcpy(&offer_msg.options[24], &lease_time, 4);
+    memcpy(&offer_msg.options[index+2], &lease_time, 4);
 
     // Se define el campo que especifica que se llegó al final de las opciones.
-    offer_msg.options[28] = 255; 
+    offer_msg.options[index+6] = 255; 
     
     // Se utiliza la función sendto para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
     ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)client_addr, client_len);
