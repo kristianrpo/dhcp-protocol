@@ -14,13 +14,15 @@
 #define MAX_LEASES 50
 #define START_IP "192.168.0.21"
 #define END_IP "192.168.0.71"
-#define LEASE_DURATION 10
+#define LEASE_DURATION_RESERVED 10 // Segundos.
+#define LEASE_DURATION_OCCUPIED 3600 // Segundos.
 
 struct lease_entry {
     uint8_t mac_addr[6];  // Dirección MAC del cliente
     uint32_t ip_addr;     // Dirección IP asignada (en formato binario)
     time_t lease_start;   // Tiempo de inicio del arrendamiento
     int lease_duration;   // Duración del arrendamiento (en segundos)
+    int state;            // 1 si está reservada, 0 si está libre, -1 ocupada.
 };
 
 
@@ -180,23 +182,36 @@ void initialize_leases(struct lease_entry leases[MAX_LEASES]) {
 
         // Se establece un valor por defecto a la duración del arrendamiento de 0 para todos los posibles arrendamientos que se puedan crear.
         leases[i].lease_duration = 0;     
+
+        // Se inicializa el estado como disponible.
+        leases[i].state = 0;   
     }
 }
 
 // Función para asignar una ip al cliente.
-uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint8_t *mac_addr) {
+uint32_t set_ip_to_client(struct lease_entry leases[MAX_LEASES], uint8_t *mac_addr, int flag_action) {
     // Se empieza a recorrer la tabla de arrendamiento para verificar ips disponibles.
     for (int i = 0; i < MAX_LEASES; i++) {
         // Se verifica que la ip este disponible, esto pasa cuando el arrendamiento no tiene una mac asignada o ya caduco su tiempo.
-        if (leases[i].mac_addr == 0 || (time(NULL) - leases[i].lease_start) > leases[i].lease_duration) {
-            // Se asigna al arrendamiento con la ip disponible la MAC del cliente.
-            memcpy(leases[i].mac_addr, mac_addr, 6);
 
+        if (leases[i].state == 0) {
             // Se obtiene el tiempo actual para definirlo en el arrendamiento para la ip disponible.
             leases[i].lease_start = time(NULL);
 
+            if(flag_action==0) {
             // Se define la duración del arrendamiento.
-            leases[i].lease_duration = LEASE_DURATION;
+            leases[i].lease_duration = LEASE_DURATION_RESERVED;
+            // Se define que el estado de la ip es reservada para un cliente, reservada significa que es ofrecida para el mismo, pero aun no se confirma su real uso.
+            leases[i].state = 1;
+            }
+            else {
+                // Se define la dirección MAC.
+                memcpy(leases[i].mac_addr, mac_addr, 6);
+                // Se define la duración del arrendamiento.
+                leases[i].lease_duration = LEASE_DURATION_OCCUPIED;
+                // Se define que el estado de la ip es reservada para un cliente, reservada significa que es ofrecida para el mismo, pero aun no se confirma su real uso.
+                leases[i].state = -1;
+            }
 
             // Se retorna la ip asignada.
             return leases[i].ip_addr;
@@ -290,9 +305,9 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     struct dhcp_message offer_msg;
 
     // Se define la IP que se le va a ofrecer al cliente para que la utilice en la red.
-    uint32_t assigned_ip = assign_ip_to_client(leases, discover_msg->chaddr);
+    uint32_t reserved_ip = set_ip_to_client(leases, discover_msg->chaddr,0);
 
-    if(assigned_ip<0){
+    if(reserved_ip<0){
         error("Error al definir la IP para el cliente: No hay IPs disponibles");
     }
 
@@ -304,7 +319,7 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     // Se define el identificador aleatorio que establece la comunicación especifica que se esta llevando a cabo entre cliente y servidor, es la misma que DHCPDISCOVER.
     // Se define en la estructura del mensaje que se le va a enviar al cliente la ip ofrecida.
     // Se define la dirección MAC del cliente en la estructura del mensaje.
-    configure_dhcp_message(&offer_msg, 2, discover_msg->htype, discover_msg->hlen, discover_msg->xid, htonl(assigned_ip), discover_msg->chaddr);
+    configure_dhcp_message(&offer_msg, 2, discover_msg->htype, discover_msg->hlen, discover_msg->xid, htonl(reserved_ip), discover_msg->chaddr);
 
      // Índice para comenzar a llenar las opciones
     int index = 0;
@@ -329,7 +344,7 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     offer_msg.options[index+1] = 4;
 
     // Se cambia el valor en orden de red para ser mandado a través de la misma en el mensaje.
-    uint32_t lease_time = htonl(LEASE_DURATION);
+    uint32_t lease_time = htonl(LEASE_DURATION_OCCUPIED);
 
     // Se establece en los siguientes 4 campos el valor de el tiempo de arrendamiento.
     memcpy(&offer_msg.options[index+2], &lease_time, 4);
@@ -348,8 +363,105 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     }
 }
 
+void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]) {
+    // Se define la estructura del mensaje que se va a mandar al cliente
+    struct dhcp_message ack_msg;
+    
+    // Obtenemos la IP mandada por el cliente que se le fue reservada en el DHCPOFFER.
+    uint32_t requested_ip = ntohl(request_msg->yiaddr);
+
+    // Iteramos para buscar la IP reservada 
+    for (int i = 0; i < MAX_LEASES; i++) {
+        if (leases[i].ip_addr == requested_ip) {
+            if(leases[i].state==1){
+                // Actualizamos el estado de la IP como ocupada.
+                leases[i].lease_start = time(NULL); 
+                leases[i].lease_duration = LEASE_DURATIION_OCCUPIED; 
+                leases[i].state = -1;  // -1 significa que la IP está en uso.
+
+                // Configuramos los campos principales del mensaje DHCPACK.
+                configure_dhcp_message(&ack_msg, 2, request_msg->htype, request_msg->hlen, request_msg->xid, htonl(requested_ip), request_msg->chaddr);
+
+                // Configuramos las opciones del mensaje DHCPACK.
+                int index = 0;
+                set_type_message(ack_msg.options, &index, 53, 1, 5); // Opción 53, valor 5 (DHCPACK)
+                set_subnet_mask(ack_msg.options, &index);            // Máscara de subred.
+                set_gateway(ack_msg.options, &index);                // Gateway.
+                set_dns_server(ack_msg.options, &index);             // Servidor DNS.
+                set_renewal_times(ack_msg.options, &index, LEASE_DURATIION_OCCUPIED); // T1 y T2.
+
+                // Establecemos el fin de las opciones.
+                ack_msg.options[index] = 255; 
+
+                // Enviamos el mensaje DHCPACK.
+                ssize_t sent_len = sendto(fd, &ack_msg, sizeof(ack_msg), 0, (struct sockaddr *)client_addr, client_len);
+                if (sent_len < 0) {
+                    error("Error al enviar DHCPACK");
+                } else {
+                    printf("DHCPACK enviado al cliente: IP %s confirmada\n", inet_ntoa((struct in_addr){htonl(requested_ip)}));
+                }   
+            }
+            else{
+                send_dhcp_nak(fd, client_addr, client_len, request_msg);
+            }
+    }
+}
+
+void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg) {
+    struct dhcp_message nak_msg;
+    
+    // Configuramos los campos principales del mensaje DHCPNAK.
+    configure_dhcp_message(&nak_msg, 2, request_msg->htype, request_msg->hlen, request_msg->xid, 0, request_msg->chaddr);
+
+    // Configuramos las opciones del mensaje DHCPNAK.
+    int index = 0;
+    set_type_message(nak_msg.options, &index, 53, 1, 6); // Opción 53, valor 6 (DHCPNAK).
+    
+    // Establecemos el fin de las opciones.
+    nak_msg.options[index] = 255; 
+
+    // Enviamos el mensaje DHCPNAK.
+    ssize_t sent_len = sendto(fd, &nak_msg, sizeof(nak_msg), 0, (struct sockaddr *)client_addr, client_len);
+    if (sent_len < 0) {
+        error("Error al enviar DHCPNAK");
+    } else {
+        printf("DHCPNAK enviado: IP solicitada no disponible o inválida\n");
+    }
+}
+
+
+
+void check_state_leases(struct lease_entry leases[MAX_LEASES]) {
+    time_t current_time = time(NULL);  // Obtener el tiempo actual
+    // Recorrer la tabla de arrendamientos
+    for (int i = 0; i < MAX_LEASES; i++) {
+        // Si el lease está ocupado o reservado
+        if (leases[i].state != 0) {
+            // Calcular el tiempo transcurrido desde que el lease fue asignado
+            time_t elapsed_time = current_time - leases[i].lease_start;
+
+            // Si el lease ha expirado (el tiempo transcurrido es mayor que la duración del lease)
+            if (elapsed_time > leases[i].lease_duration) {
+                // Liberar la IP, poniendo el estado del lease como libre (0)
+                leases[i].state = 0;
+
+                // Limpiar la MAC asociada para que esté disponible
+                memset(leases[i].mac_addr, 0, 6);
+
+                // Resetear el tiempo y la duración del lease
+                leases[i].lease_start = 0;
+                leases[i].lease_duration = 0;
+
+                printf("Lease para IP %s ha expirado y fue liberado.\n", inet_ntoa((struct in_addr){htonl(leases[i].ip_addr)}));
+            }
+        }
+    }
+}
+
+
 // Función para procesar los mensajes DHCP según el tipo
 void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
+    check_state_leases(leases);
     switch (message_type) {
         case 1: 
             printf("Mensaje DHCPDISCOVER recibido\n");
@@ -360,6 +472,7 @@ void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_a
             break;
     }
 }
+
 
 int main(){
 
