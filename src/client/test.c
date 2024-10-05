@@ -156,6 +156,9 @@ int main() {
 
             print_network_config(offer_msg);
 
+            printf("Esperando 10 segundos antes de enviar DHCPREQUEST...\n");
+            sleep(12);  // Pausa de 10 segundos
+
             // Construir mensaje DHCPREQUEST
             memset(&request_msg, 0, sizeof(request_msg));
             request_msg.op = 1;  // Solicitud (cliente a servidor)
