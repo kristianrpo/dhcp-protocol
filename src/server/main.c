@@ -401,10 +401,32 @@ void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     }
 } 
 
+uint32_t get_requested_ip(struct dhcp_message *request_msg) {
+    uint32_t requested_ip = 0;
+    int i = 0;
+    
+    // Recorrer las opciones del mensaje DHCP hasta encontrar la opción 50
+    while (i < 312) {
+        if (request_msg->options[i] == 50) {  // Opción 50: Requested IP Address
+            memcpy(&requested_ip, &request_msg->options[i + 2], 4);  // Copia la IP solicitada
+            requested_ip = ntohl(requested_ip);  // Convertimos de formato de red a formato host
+            break;
+        }
+        i += request_msg->options[i + 1] + 2;  // Avanzamos a la siguiente opción
+    }
+
+    // Si no se encontró una IP solicitada en la opción 50, retornamos 0 como error
+    if (requested_ip == 0) {
+        printf("Error: No se encontró la IP solicitada en la opción 50 del DHCPREQUEST.\n");
+    }
+
+    return requested_ip;
+}
+
 // Función para enviar un DHCPACK.
 void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]) { 
-    // Obtenemos la IP mandada por el cliente que se le fue reservada en el DHCPOFFER.
-    uint32_t requested_ip = ntohl(request_msg->yiaddr);
+    // Obtenemos la IP solicitada por el cliente desde la opción 50 (Requested IP Address)
+    uint32_t requested_ip = get_requested_ip(request_msg);
 
     // Llamamos a la función que asigna la ip al cliente y actualiza la tabla de arrendamientos.
     uint32_t assigned_ip = assign_ip_to_client(leases, requested_ip, request_msg->chaddr);
