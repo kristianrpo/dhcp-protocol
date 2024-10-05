@@ -1,4 +1,4 @@
- #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -82,7 +82,7 @@ int main() {
     struct sockaddr_in client_addr, server_addr;
     int sockfd;
     ssize_t sent_len;
-    struct dhcp_message discover_msg;
+    struct dhcp_message discover_msg, request_msg;
     struct dhcp_message *offer_msg;  // Para almacenar el mensaje recibido
     char buffer[BUFFER_SIZE];
 
@@ -155,6 +155,36 @@ int main() {
             printf("IP ofrecida: %s\n", inet_ntoa(*(struct in_addr *)&offer_msg->yiaddr));
 
             print_network_config(offer_msg);
+
+            // Construir mensaje DHCPREQUEST
+            memset(&request_msg, 0, sizeof(request_msg));
+            request_msg.op = 1;  // Solicitud (cliente a servidor)
+            request_msg.htype = 1;  // Tipo de hardware (Ethernet)
+            request_msg.hlen = 6;  // Longitud de dirección MAC (6 bytes)
+            request_msg.xid = offer_msg->xid;  // Mismo ID de transacción
+            request_msg.flags = htons(0x8000);  // Broadcast
+            memcpy(request_msg.chaddr, discover_msg.chaddr, 6);  // Misma dirección MAC
+
+            // Configurar opciones del mensaje DHCPREQUEST
+            request_msg.options[0] = 53;  // Opción para tipo de mensaje DHCP
+            request_msg.options[1] = 1;   // Longitud de la opción
+            request_msg.options[2] = 3;   // DHCPREQUEST
+
+            // Opción para IP solicitada (opción 50)
+            request_msg.options[3] = 50;
+            request_msg.options[4] = 4;  // Longitud de la opción
+            memcpy(&request_msg.options[5], &offer_msg->yiaddr, 4);  // IP ofrecida
+
+            // Fin de opciones
+            request_msg.options[9] = 255;
+
+            sent_len = sendto(sockfd, &request_msg, sizeof(request_msg), 0, 
+                      (struct sockaddr *)&server_addr, sizeof(server_addr));
+            if (sent_len < 0) {
+                error("Error al enviar DHCPREQUEST");
+            }
+
+            printf("Mensaje DHCPREQUEST enviado\n");
         } else {
             printf("No se recibió un DHCPOFFER. Tipo de mensaje recibido: %d\n", dhcp_type);
         }
