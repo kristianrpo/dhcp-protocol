@@ -13,9 +13,9 @@
 
 #define MAX_LEASES 50
 #define START_IP "192.168.0.21"
-#define END_IP "192.168.0.71"
 #define LEASE_DURATION_RESERVED 10 // Segundos.
 #define LEASE_DURATION_OCCUPIED 3600 // Segundos.
+#define IP_ERROR 0xFFFFFFFF    // 255.255.255.255 IP PARA COMPARAR COMO ERROR
 
 struct lease_entry {
     uint8_t mac_addr[6];  // Dirección MAC del cliente
@@ -46,7 +46,7 @@ struct dhcp_message {
 
 // Función para manejar errores utilizando fprintf
 void error(const char *msg) {
-    fprintf(stderr, "%s: %s\n", msg, strerror(errno));
+    fprintf(stderr, "%s \n", msg);
     exit(EXIT_FAILURE);  
 }
 
@@ -166,8 +166,6 @@ void int_to_ip(uint32_t ip, char *buffer) {
 void initialize_leases(struct lease_entry leases[MAX_LEASES]) {
     // Convertimos ips a enteros para operarlos (+1)
     uint32_t start_ip = ip_to_int(START_IP); 
-    uint32_t end_ip = ip_to_int(END_IP);
-    
     // Se recorre cada uno de los posibles arrendamientos y se establece en 0
     for (int i = 0; i < MAX_LEASES; i++) {
         // Iniciar con MACs vacías (para los 6 bits de la mac en 0) para todos los posibles arrendamientos que se puedan crear.
@@ -224,7 +222,6 @@ uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint32_t req
                 leases[i].lease_duration = LEASE_DURATION_OCCUPIED;
                 // Se define que el estado de la ip es reservada para un cliente, reservada significa que es ofrecida para el mismo, pero aun no se confirma su real uso.
                 leases[i].state = -1;
-
                 // Se retorna la ip asignada.
                 return leases[i].ip_addr;
             }
@@ -322,7 +319,7 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     // Se define la IP que se le va a ofrecer al cliente para que la utilice en la red.
     uint32_t reserved_ip = reserved_ip_to_client(leases);
 
-    if(reserved_ip<0){
+    if(reserved_ip==IP_ERROR){
         error("Error al definir la IP para el cliente: No hay IPs disponibles");
     }
 
@@ -430,9 +427,8 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
 
     // Llamamos a la función que asigna la ip al cliente y actualiza la tabla de arrendamientos.
     uint32_t assigned_ip = assign_ip_to_client(leases, requested_ip, request_msg->chaddr);
-
     // Si la ip no se pudo asignar, se manda un mensaje DHCPNAK.
-    if (assigned_ip < 0) {
+    if (assigned_ip == IP_ERROR) {
         send_dhcp_nak(fd, client_addr, client_len, request_msg);
     }
     // Si la ip se pudo asignar, se manda un mensaje DHCPACK.
