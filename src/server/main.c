@@ -88,7 +88,7 @@ int initialize_socket() {
         exit(EXIT_FAILURE);
     }
 
-    // Mensaje de confirmación de que el socket fue configurado e inicializado correctamente 
+    // Mensaje de confirmación de que el socket fue configurado e inicializado correctamente.
     printf("Socket inicializado y escuchando en el puerto %d\n", DHCP_SERVER_PORT);
     return fd;
 }
@@ -96,7 +96,7 @@ int initialize_socket() {
 // Función para recibir un mensaje del socket
 ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *client_addr, socklen_t *client_len) {
     
-    // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente
+    // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente.
     // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer.
     ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)client_addr, client_len);
 
@@ -143,7 +143,7 @@ uint32_t ip_to_int(const char *ip) {
     // Se define estructura in_addr para manejar direcciones IP.
     struct in_addr addr;
 
-    // Se convierte la dirección ip a un formato binario con la función inet_aton
+    // Se convierte la dirección ip a un formato binario con la función inet_aton.
     inet_aton(ip, &addr);
 
     // Se retorna el valor convertido a int, o mejor dicho, en formato host, peritiendo asi realizar operaciones con este valor.
@@ -232,12 +232,12 @@ uint32_t assign_ip_to_client(struct lease_entry leases[MAX_LEASES], uint32_t req
     }       
 }
 
-// Función para configurar los campos principales del mensaje DHCP
+// Función para configurar los campos principales del mensaje DHCP.
 void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype, uint8_t hlen, uint32_t xid, uint32_t yiaddr, uint8_t *chaddr) {
-    // Inicializar el mensaje DHCP con ceros
+    // Inicializar el mensaje DHCP con ceros.
     memset(msg, 0, sizeof(struct dhcp_message));
 
-    // Configurar los campos principales del mensaje DHCP
+    // Configurar los campos principales del mensaje DHCP.
     msg->op = op;          // Tipo de operación (1 para solicitud, 2 para respuesta).
     msg->htype = htype;    // Tipo de hardware (1 para Ethernet).
     msg->hlen = hlen;      // Longitud de la dirección MAC (6 bytes para Ethernet).
@@ -294,7 +294,7 @@ void set_gateway(uint8_t *options, int *index) {
 }
 
 
-// Función para establecer el servidor DNS en las opciones del mensaje DHCP
+// Función para establecer el servidor DNS en las opciones del mensaje DHCP.
 void set_dns_server(uint8_t *options, int *index) {
     // Establece el tipo de opción a "DNS server" en el índice actual (opción 6).
     options[*index] = 6; 
@@ -307,7 +307,7 @@ void set_dns_server(uint8_t *options, int *index) {
     options[*index + 5] = 8;
     
     // Incrementa el índice para la siguiente opción, avanzando 6 posiciones.
-    *index += 6;  // Actualiza el índice
+    *index += 6;
 }
 
 
@@ -323,7 +323,7 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
         error("Error al definir la IP para el cliente: No hay IPs disponibles");
     }
 
-    // Se llama a la función que configura los campos principales del mensaje DHCP
+    // Se llama a la función que configura los campos principales del mensaje DHCP.
     // Se llena los campos del datagrama con la información pertinente.
     // Se establece el campo con el valor de '2', indicando que el mensaje fué enviado por parte de un servidor, lo que indica una respuesta.
     // Se establece el mismo protocolo utilizado por el cliente para enviar el mensaje, en este caso, utilizandose el protocolo ethernet, permitiendo a dispositivos comunicarse entre si en una red.
@@ -336,16 +336,16 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
      // Índice para comenzar a llenar las opciones
     int index = 0;
 
-    // Llama a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER
+    // Llama a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER.
     set_type_message(offer_msg.options, &index, 53, 1, 2); 
 
-    // Llama a la función que configura la máscara de subred
+    // Llama a la función que configura la máscara de subred.
     set_subnet_mask(offer_msg.options, &index);
 
-    // Llama a la función que configura el gateway
+    // Llama a la función que configura el gateway.
     set_gateway(offer_msg.options, &index);
 
-    // Llama a la función que configura el servidor DNS
+    // Llama a la función que configura el servidor DNS.
     set_dns_server(offer_msg.options, &index);
 
     // Se define el campo que se especifica la duración del arrendamiento.
@@ -398,21 +398,33 @@ void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     }
 } 
 
+// Función para obtener la IP solicitada por el cliente en un DHCPREQUEST que fue la que se envió en el DHCPOFFER.
 uint32_t get_requested_ip(struct dhcp_message *request_msg) {
+
+    // Se define la variable que va a almacenar la IP solicitada por el cliente.
     uint32_t requested_ip = 0;
+
+    // Se define la variable de control para recorrer el campo de options.
     int i = 0;
-    
-    // Recorrer las opciones del mensaje DHCP hasta encontrar la opción 50
+
+    // Recorremos el campo de 'options' del datagrama recibido, options puede tener una cantidad de opciones variable, por lo tanto, tenemos que recorrer options hasta encontrar la opción 50, que es la que contiene la IP solicitada.
     while (i < 312) {
-        if (request_msg->options[i] == 50) {  // Opción 50: Requested IP Address
-            memcpy(&requested_ip, &request_msg->options[i + 2], 4);  // Copia la IP solicitada
-            requested_ip = ntohl(requested_ip);  // Convertimos de formato de red a formato host
+        // Si encontramos la opción 50 que denota la IP solicitada por el cliente.
+        if (request_msg->options[i] == 50) { 
+            // Se obtiene la IP solicitada por el cliente en formato de red.
+            memcpy(&requested_ip, &request_msg->options[i + 2], 4);
+
+            // Se convierte la IP solicitada por el cliente de formato de red a formato host para poder hacer operaciones con la misma.
+            requested_ip = ntohl(requested_ip);
+
+            // Se sale del ciclo.
             break;
         }
-        i += request_msg->options[i + 1] + 2;  // Avanzamos a la siguiente opción
+        // Avanzamos a la siguiente opción.
+        i += request_msg->options[i + 1] + 2;
     }
 
-    // Si no se encontró una IP solicitada en la opción 50, retornamos 0 como error
+    // Si no se encontró una IP solicitada en la opción 50, retornamos 0 como error.
     if (requested_ip == 0) {
         printf("Error: No se encontró la IP solicitada en la opción 50 del DHCPREQUEST.\n");
     }
@@ -422,7 +434,7 @@ uint32_t get_requested_ip(struct dhcp_message *request_msg) {
 
 // Función para enviar un DHCPACK.
 void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]) { 
-    // Obtenemos la IP solicitada por el cliente desde la opción 50 (Requested IP Address)
+    // Obtenemos la IP solicitada por el cliente desde la opción 50 (Requested IP Address).
     uint32_t requested_ip = get_requested_ip(request_msg);
 
     // Llamamos a la función que asigna la ip al cliente y actualiza la tabla de arrendamientos.
@@ -442,7 +454,7 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
         // Configuramos las opciones del mensaje DHCPACK.
         int index = 0;
 
-        // Llama a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 5 es el valor para DHCPACK
+        // Llama a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 5 es el valor para DHCPACK.
         set_type_message(ack_msg.options, &index, 53, 1, 5);
 
         // Llama a la función que configura la máscara de subred
@@ -467,28 +479,29 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     }
 }
 
-// Función para verificar si un arrendamiento ha expirado y liberar la IP
+// Función para verificar si un arrendamiento ha expirado y liberar la IP.
 void check_state_leases(struct lease_entry leases[MAX_LEASES]) {
-    time_t current_time = time(NULL);  // Obtener el tiempo actual
+    time_t current_time = time(NULL);  // Obtener el tiempo actual.
     // Recorrer la tabla de arrendamientos
     for (int i = 0; i < MAX_LEASES; i++) {
-        // Si el lease está ocupado o reservado
+        // Si el lease está ocupado o reservado.
         if (leases[i].state != 0) {
-            // Calcular el tiempo transcurrido desde que el lease fue asignado
+            // Calcular el tiempo transcurrido desde que el lease fue asignado.
             time_t elapsed_time = current_time - leases[i].lease_start;
 
-            // Si el lease ha expirado (el tiempo transcurrido es mayor que la duración del lease)
+            // Si el lease ha expirado (el tiempo transcurrido es mayor que la duración del lease).
             if (elapsed_time > leases[i].lease_duration) {
-                // Liberar la IP, poniendo el estado del lease como libre (0)
+                // Liberar la IP, poniendo el estado del lease como libre (0).
                 leases[i].state = 0;
 
-                // Limpiar la MAC asociada para que esté disponible
+                // Limpiar la MAC asociada para que esté disponible.
                 memset(leases[i].mac_addr, 0, 6);
 
-                // Resetear el tiempo y la duración del lease
+                // Resetear el tiempo y la duración del lease.
                 leases[i].lease_start = 0;
                 leases[i].lease_duration = 0;
 
+                // Imprimir mensaje de que el lease ha expirado y la IP ha sido liberada.
                 printf("Lease para IP %s ha expirado y fue liberado.\n", inet_ntoa((struct in_addr){htonl(leases[i].ip_addr)}));
             }
         }
@@ -496,7 +509,7 @@ void check_state_leases(struct lease_entry leases[MAX_LEASES]) {
 }
 
 
-// Función para procesar los mensajes DHCP según el tipo
+// Función para procesar los mensajes DHCP según el tipo.
 void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
     check_state_leases(leases);
     switch (message_type) {
@@ -520,7 +533,7 @@ int main(){
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE]; 
 
-    // Definición de variables: fd, que contiene el socket creado y el message_type, que almacena el tipo de mensaje recibido enviado desde el cliente
+    // Definición de variables: fd, que contiene el socket creado y el message_type, que almacena el tipo de mensaje recibido enviado desde el cliente.
     int fd, message_type;
 
     // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
@@ -532,22 +545,22 @@ int main(){
     // Tabla de arrendamiento. Aquí se encuentran todos las ips que han sido asignadas con la MAC de los clientes e información del tiempo de inicio del arrendamiento y su duración.
     struct lease_entry leases[MAX_LEASES];
 
-    // Inicializar la tabla de arrendamientos
+    // Inicializar la tabla de arrendamientos.
     initialize_leases(leases);
 
-    // Inicializar el socket
+    // Inicializar el socket.
     fd = initialize_socket();
 
-    // Al utilizar UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, está siempre listo para recibir mensajes, no como TCP, que se debe establecer una conexión con el cliente y no siempre está escuchando
+    // Al utilizar UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, está siempre listo para recibir mensajes, no como TCP, que se debe establecer una conexión con el cliente y no siempre está escuchando.
     printf("Esperando mensajes de clientes DHCP...\n");
 
-    // Este bucle hace que el servidor DHCP este constantemente esperando recibir mensajes
+    // Este bucle hace que el servidor DHCP este constantemente esperando recibir mensajes.
     while (1) {
         // Recibir mensaje del cliente
         ssize_t msg_len = receive_message(fd, buffer, &client_addr, &client_len);
 
-        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor
-        // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura
+        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor.
+        // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura.
         struct dhcp_message *msg = (struct dhcp_message *)buffer;
 
         // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
@@ -557,12 +570,12 @@ int main(){
             error("Error al identificar el tipo de mensaje");
         }
 
-        // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente
+        // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente.
         process_dhcp_message(message_type, fd, &client_addr, client_len, msg, leases);
 
     }
 
-    // Cerrar el socket cuando ya no se use para evitar mal gastar recursos
+    // Cerrar el socket cuando ya no se use para evitar mal gastar recursos.
     close(fd);
     return 0;
 }
