@@ -1,12 +1,13 @@
-#include <string.h> 
-#include <stdio.h>      
-#include <stdlib.h>     
-#include <errno.h>      
-#include <netinet/in.h> 
-#include <arpa/inet.h>  
-#include <sys/socket.h> 
-#include <unistd.h>  
-#include <time.h>   
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <time.h>
+#include <pthread.h> // Para manejar hilos
 
 #define DHCP_SERVER_PORT 1067
 #define BUFFER_SIZE 576
@@ -43,6 +44,15 @@ struct dhcp_message {
     uint8_t sname[64];      // Nombre del servidor, generalmente no se usa.
     uint8_t file[128];      // Nombre del archivo de arranque que el cliente deberia usar al iniciar, se usa solo cuando los dispositivos necesitan un arranqye remoto o boot desde una imagen de red.
     uint8_t options[312];   // Opciones que personalizan en comportamiento del protocolo, se incluye información como el tipo de mensaje (opción 53), identificador del servidor (opción 54), parametros de red solicitados por el cliente (opción 55), etc.
+};
+
+// Estructura para los argumentos de los hilos. Esta está diseñada para contener todos los datos que cada hilo necesitará para procesar una solicitud de cliente DHCP.
+struct thread_args {
+    int fd;
+    struct sockaddr_in client_addr;
+    socklen_t client_len;
+    char buffer[BUFFER_SIZE];
+    struct lease_entry *leases;
 };
 
 // Función para manejar errores utilizando fprintf
@@ -311,12 +321,23 @@ void set_dns_server(uint8_t *options, int *index) {
     *index += 6;
 }
 
+
+// Función para establecer el identificador del servidor en las opciones del mensaje DHCP.
 void set_server_identifier(uint8_t *options, int *index) {
-    uint32_t server_ip = inet_addr(IP_SERVER_IDENTIFIER);  // Cambia a la IP de tu servidor.
-    options[*index] = 54;  // Opción 54: Identificador del servidor.
-    options[*index + 1] = 4;  // Longitud de la IP.
-    memcpy(&options[*index + 2], &server_ip, 4);  // Copiar la IP del servidor.
-    *index += 6;  // Avanza el índice 6 posiciones (tipo + longitud + 4 bytes de la IP).
+    // Se convierte el string de la IP del servidor en un entero de 32 bits que representa la IP en formato de red (IPv4).
+    uint32_t server_ip = inet_addr(IP_SERVER_IDENTIFIER);
+
+    // Se establece en las opciones que se va a definir el identificador del servidor, y se le asigna el codigo 54 que lo representa.
+    options[*index] = 54;
+
+    // Se establece la longitud de la dirección IP del servidor (asi se conoce cuanto se debe leer o escribir de la ip cuando se necesite).
+    options[*index + 1] = 4;
+
+    // Se copia la dirección IP del servidor en la estructura del mensaje DHCP.
+    memcpy(&options[*index + 2], &server_ip, 4);
+    
+    // Avanza el índice 6 posiciones (tipo + longitud + 4 bytes de la IP).
+    *index += 6;
 }
 
 
@@ -548,6 +569,33 @@ void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_a
 }
 
 
+// Esta función maneja la lógica para procesar una solicitud DHCP de un cliente en un hilo separado.
+// El parámetro args es un puntero a una estructura que contiene los argumentos necesarios para procesar la solicitud.
+// Basicamente cuando se necesita otro hilo, ese otro hilo ejecuta esta funcion para procesar solicitudes DHCP.
+void *handle_client(void *args) {
+    // Se obtiene el contenido para cada uno de los campos definidos en la estructura y se almacena en la estructura thread_data.
+    struct thread_args *thread_data = (struct thread_args *)args;
+
+    // Se define la estructura que va a almacenar el mensaje DHCP que se va a recibir del cliente. Este mensaje se obtiene al leer el buffer que se recibe del cliente especificado en los argumentos de la función
+    struct dhcp_message *msg = (struct dhcp_message *)thread_data->buffer;
+    
+    // Obtener el tipo de mensaje DHCP.
+    int message_type = get_dhcp_message_type(msg);
+
+    // Si el mensaje es menor a 0, significa que no se pudo identificar el mensaje recibido por parte del cliente.
+    if (message_type < 0) {
+        error("Error al identificar el tipo de mensaje");
+    }
+
+    // Procesar el mensaje según su tipo.
+    process_dhcp_message(message_type, thread_data->fd, &thread_data->client_addr, thread_data->client_len, msg, thread_data->leases);
+
+    // Liberar la memoria reservada para los argumentos del hilo.
+    free(args);
+    pthread_exit(NULL);
+}
+
+
 int main(){
 
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
@@ -576,23 +624,39 @@ int main(){
 
     // Este bucle hace que el servidor DHCP este constantemente esperando recibir mensajes.
     while (1) {
-        // Recibir mensaje del cliente
-        ssize_t msg_len = receive_message(fd, buffer, &client_addr, &client_len);
-
-        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor.
-        // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura.
-        struct dhcp_message *msg = (struct dhcp_message *)buffer;
-
-        // Se obtiene el tipo de mensaje que se mandó del cliente para saber la acción a realizar.
-        message_type = get_dhcp_message_type(msg);
-
-        if(message_type<0){
-            error("Error al identificar el tipo de mensaje");
+        // Reservar memoria para los argumentos del hilo.
+        struct thread_args *args = malloc(sizeof(struct thread_args));
+        if (args == NULL) {
+            error("Error al asignar memoria para los argumentos del hilo");
         }
 
-        // Dependiendo del tipo de mensaje que el cliente mandó, se realiza la acción correspondiente.
-        process_dhcp_message(message_type, fd, &client_addr, client_len, msg, leases);
+        // Recibir el mensaje del cliente.
 
+        // Se guarda el identificador del socket en los args.
+        args->fd = fd;
+
+        // Se guarda la longitud de la estructura de la diracción del cliente.
+        args->client_len = client_len;
+
+        // Se guarda el mensaje del cliente en los args (se guarda en el args->buffer el buffer obtenido en la función).
+        ssize_t msg_len = receive_message(fd, args->buffer, &args->client_addr, &args->client_len);
+
+        // se guarda la tabla de arrendamiento en los args
+        args->leases = leases;
+
+        // Crear un nuevo hilo para procesar la solicitud.
+
+        // Definimos la variable que va a almacenar el id del hilo.
+        pthread_t thread_id;
+
+        // Se crea un hilo para procesar la solicitud del cliente, se le pasa la función handle_client, que es la función que se encarga de procesar las solicitudes DHCP de los clientes.
+        // Se le pasa la estructura que va a almacenar el id del hilo para cuado se cree el mismo.
+        if (pthread_create(&thread_id, NULL, handle_client, (void *)args) != 0) {
+            error("Error al crear el hilo");
+        }
+
+        // Detach el hilo para que se limpie automáticamente al finalizar.
+        pthread_detach(thread_id);
     }
 
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos.

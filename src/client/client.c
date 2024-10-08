@@ -76,6 +76,31 @@ void print_network_config(struct dhcp_message *msg) {
     }
 }
 
+void print_server_identifier(struct dhcp_message *msg) {
+    struct in_addr server_ip;
+    int i = 0;
+
+    while (i < 312) {
+        uint8_t option = msg->options[i];
+        uint8_t len = msg->options[i + 1];
+
+        if (option == 54 && len == 4) {  // Opción 54: Server Identifier
+            memcpy(&server_ip, &msg->options[i + 2], 4);
+            printf("IP del servidor DHCP: %s\n", inet_ntoa(server_ip));
+            return;
+        }
+
+        if (option == 255) {
+            break;
+        }
+
+        i += len + 2;
+    }
+
+    printf("No se encontró la opción 54 (Server Identifier) en el mensaje.\n");
+}
+
+
 // Declaración de funciones
 int creatingSocket();
 void setupServer(struct sockaddr_in *server_addr);
@@ -111,9 +136,9 @@ int main() {
             printf("IP ofrecida: %s\n", inet_ntoa(*(struct in_addr *)&offer_msg.yiaddr));
 
             print_network_config(&offer_msg);
+            print_server_identifier(&offer_msg);
 
             printf("Esperando 10 segundos antes de enviar DHCPREQUEST...\n");
-            sleep(10);  // Pausa de 10 segundos
 
             // Construir mensaje DHCPREQUEST
             struct dhcp_message request_msg;
@@ -183,10 +208,10 @@ void setupServer(struct sockaddr_in *server_addr) {
 void setupClient(struct sockaddr_in *client_addr, int sockfd) {
     memset(client_addr, 0, sizeof(*client_addr));
     client_addr->sin_family = AF_INET;
-    client_addr->sin_port = htons(DHCP_CLIENT_PORT);
+    client_addr->sin_port = htons(0);
     client_addr->sin_addr.s_addr = INADDR_ANY;
 
-    // Enlazar el socket a la dirección local
+    // Enlazar el socket a la dirección local.
     if (bind(sockfd, (struct sockaddr *)client_addr, sizeof(*client_addr)) < 0) {
         error("Error en bind");
     }
@@ -236,6 +261,7 @@ void handleDHCPACK(int sockfd, struct sockaddr_in *server_addr) {
         int dhcp_type = get_dhcp_message_type(&ack_msg);
         if (dhcp_type == 5) {  // 5 es el valor de DHCPACK
             printf("Mensaje DHCPACK recibido correctamente\n");
+            print_server_identifier(&ack_msg);
         } else {
             printf("No se recibió un DHCPACK. Tipo de mensaje recibido: %d\n", dhcp_type);
         }
