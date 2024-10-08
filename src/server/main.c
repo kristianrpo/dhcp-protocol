@@ -16,6 +16,7 @@
 #define LEASE_DURATION_RESERVED 10 // Segundos.
 #define LEASE_DURATION_OCCUPIED 3600 // Segundos.
 #define IP_ERROR 0xFFFFFFFF    // 255.255.255.255 IP PARA COMPARAR COMO ERROR
+#define IP_SERVER_IDENTIFIER "192.168.0.2"
 
 struct lease_entry {
     uint8_t mac_addr[6];  // Dirección MAC del cliente
@@ -310,6 +311,15 @@ void set_dns_server(uint8_t *options, int *index) {
     *index += 6;
 }
 
+void set_server_identifier(uint8_t *options, int *index) {
+    uint32_t server_ip = inet_addr(IP_SERVER_IDENTIFIER);  // Cambia a la IP de tu servidor.
+    options[*index] = 54;  // Opción 54: Identificador del servidor.
+    options[*index + 1] = 4;  // Longitud de la IP.
+    memcpy(&options[*index + 2], &server_ip, 4);  // Copiar la IP del servidor.
+    *index += 6;  // Avanza el índice 6 posiciones (tipo + longitud + 4 bytes de la IP).
+}
+
+
 
 // Función para enviar un DHCPOFFER.
 void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
@@ -348,6 +358,10 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     // Llama a la función que configura el servidor DNS.
     set_dns_server(offer_msg.options, &index);
 
+    // Llama a la función que configura el identificador del servidor.
+    set_server_identifier(offer_msg.options, &index);
+
+
     // Se define el campo que se especifica la duración del arrendamiento.
     // Se define el codigo de la opción que determina la duración del arrendamiento de la IP.
     offer_msg.options[index] = 51;
@@ -385,6 +399,9 @@ void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     // Configuramos las opciones del mensaje DHCPNAK.
     int index = 0;
     set_type_message(nak_msg.options, &index, 53, 1, 6); // Opción 53, valor 6 (DHCPNAK).
+
+    // Llama a la función que configura el identificador del servidor.
+    set_server_identifier(nak_msg.options, &index);
     
     // Establecemos el fin de las opciones.
     nak_msg.options[index] = 255; 
@@ -464,7 +481,10 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
         set_gateway(ack_msg.options, &index);         
 
         // Llama a la función que configura el servidor DNS       
-        set_dns_server(ack_msg.options, &index);           
+        set_dns_server(ack_msg.options, &index);
+
+        // Llama a la función que configura el identificador del servidor.
+        set_server_identifier(ack_msg.options, &index);           
 
         // Establecemos el fin de las opciones.
         ack_msg.options[index] = 255; 
