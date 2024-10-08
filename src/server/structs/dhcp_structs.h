@@ -1,10 +1,10 @@
 #ifndef DHCP_STRUCTS_H
 #define DHCP_STRUCTS_H
 
-#include "dhcp_constants.h" 
 #include <stdint.h>
 #include <time.h>
 #include <netinet/in.h>
+#include "../constants/dhcp_constants.h" 
 
 // Estructura para representar un arrendamiento
 struct lease_entry {

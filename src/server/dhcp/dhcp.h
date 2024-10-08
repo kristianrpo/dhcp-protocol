@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <pthread.h> 
-#include "dhcp_structs.h"
-#include "error.h"
+#include "../structs/dhcp_structs.h"
+#include "../error/error.h"
 
 // Función para obtener el mensaje DHCP para conocer la opción a realizar.
 int get_dhcp_message_type(struct dhcp_message *msg);

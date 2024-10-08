@@ -3,11 +3,11 @@
 #include <string.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include "socket.h"
-#include "dhcp.h"
-#include "dhcp_structs.h"
-#include "dhcp_constants.h"
-#include "error.h"
+#include "socket/socket.h"
+#include "dhcp/dhcp.h"
+#include "structs/dhcp_structs.h"
+#include "constants/dhcp_constants.h"
+#include "error/error.h"
 int main(){
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE]; 

@@ -9,8 +9,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include "error.h"
-#include "dhcp_structs.h"
+#include "../error/error.h"
+#include "../structs/dhcp_structs.h"
 
 // Función para inicializar el socket.
 int initialize_socket();
