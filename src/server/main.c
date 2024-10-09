@@ -12,8 +12,11 @@ int main(){
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE]; 
 
-    // Definición de variables: fd, que contiene el socket creado y el message_type, que almacena el tipo de mensaje recibido enviado desde el cliente.
-    int fd, message_type;
+    // Definición de variable fd, que contiene el socket creado.
+    int fd;
+
+    // Definici[on de variable message_len, que almacena la longitud del mensaje recibido.
+    ssize_t message_len;
 
     // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
     struct sockaddr_in client_addr;
@@ -50,7 +53,7 @@ int main(){
         args->client_len = client_len;
 
         // Se guarda el mensaje del cliente en los args (se guarda en el args->buffer el buffer obtenido en la función).
-        ssize_t msg_len = receive_message(fd, args->buffer, &args->client_addr, &args->client_len);
+        message_len = receive_message(fd, args->buffer, &args->client_addr, &args->client_len);
 
         // se guarda la tabla de arrendamiento en los args
         args->leases = leases;
