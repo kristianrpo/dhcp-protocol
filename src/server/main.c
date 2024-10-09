@@ -18,11 +18,20 @@ int main(){
     // Definici[on de variable message_len, que almacena la longitud del mensaje recibido.
     ssize_t message_len;
 
+    // Se define la estructura para almacenar la información del servidor.
+    struct sockaddr_in server_addr;
+
     // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
     struct sockaddr_in client_addr;
 
-    // Tamaño de la dirección del clinete (para saber cuantos bytes se debe leer o escribir en la estructura).
+    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
+    socklen_t server_len = sizeof(server_addr);
+
+    // Tamaño de la dirección del cliente (para saber cuantos bytes se debe leer o escribir en la estructura).
     socklen_t client_len = sizeof(client_addr);
+
+    // Inicializar el socket.
+    fd = initialize_socket(&server_addr, server_len);
 
     // Tabla de arrendamiento. Aquí se encuentran todos las ips que han sido asignadas con la MAC de los clientes e información del tiempo de inicio del arrendamiento y su duración.
     struct lease_entry leases[MAX_LEASES];
@@ -30,9 +39,7 @@ int main(){
     // Inicializar la tabla de arrendamientos.
     initialize_leases(leases);
 
-    // Inicializar el socket.
-    fd = initialize_socket();
-
+    
     // Al utilizar UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, está siempre listo para recibir mensajes, no como TCP, que se debe establecer una conexión con el cliente y no siempre está escuchando.
     printf("Esperando mensajes de clientes DHCP...\n");
 

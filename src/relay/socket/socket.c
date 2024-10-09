@@ -26,7 +26,7 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
 
     // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
-    if (bind(fd, (struct sockaddr *)&relay_addr, relay_len) < 0) {
+    if (bind(fd, (struct sockaddr *)relay_addr, relay_len) < 0) {
         error("Error al enlazar el socket con la estructura de red definida");
         close(fd);
         exit(EXIT_FAILURE);

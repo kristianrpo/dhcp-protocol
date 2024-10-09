@@ -1,38 +1,32 @@
 #include "socket.h"
 
-int initialize_socket() {
+int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
     // Definición de variable que va a almacenar el socker.
     int fd;
-
-    // Definimos la estructura que va a almacenar la ip y el puerto del servidor DHCP (ESTA ESTRUCTURA ESTA HECHA PARA ALMACENAR DIRECCIONES DE RED EN IPV4 (sockaddr_in)) y le damos de nombre server_addr.
-    struct sockaddr_in server_addr; 
-
-    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
-    socklen_t server_len = sizeof(server_addr);
 
     // Asignación a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
     fd = socket(AF_INET,SOCK_DGRAM,0); 
 
     // Si el socket no se pudo crear satisfactoriamente, llamamos a la función de error para recibir el mensaje completo de fallo al crear un socket.
     if(fd<0){
-         error("No se pudo crear el socket");
+        error("No se pudo crear el socket");
+        exit(EXIT_FAILURE);
     }
 
     // Configuración de la estructura donde se va a almacenar la ip y el puerto.
     // Configuración de que el socket va a almacenar una IPV4.
-    server_addr.sin_family = AF_INET;
+    server_addr->sin_family = AF_INET;
 
     // Configuración de que el socket va a tener asociado el puerto 1067 para DHCP. htons tranforma este numero en decimal a bits de red.
-    server_addr.sin_port = htons(DHCP_SERVER_PORT);
+    server_addr->sin_port = htons(DHCP_SERVER_PORT);
 
     // Configuración de la dirección IP donde el socket va a estar escuchando conexiones (el servidor para todas sus ips relacionadas con el puerto especificado va a estar escuchando). htonl tambien convierte a formato adecuado.
-    server_addr.sin_addr.s_addr = htonl(INADDR_ANY); 
-
+    server_addr->sin_addr.s_addr = htonl(INADDR_ANY); 
 
     // Ahora, se va a enlazar el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parametros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, por el utlimo, el tamaño de la estructura que definimos para que se sepa cuanta memoria se debe leer.
-    if (bind(fd, (struct sockaddr *)&server_addr, server_len) < 0) {
-        error("Error al enlazar el socket con la estructura de red definida");
+    if (bind(fd, (struct sockaddr *)server_addr, server_len) < 0) {
+        perror("Error al enlazar el socket con la estructura de red definida");
         close(fd);
         exit(EXIT_FAILURE);
     }
