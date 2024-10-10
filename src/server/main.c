@@ -12,75 +12,83 @@ int main(){
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE]; 
 
-    // Definición de variable fd, que contiene el socket creado.
+    // Reservamos un espacio en memoria para almacenar el identificador del socket que se va a utilizar.
     int fd;
 
-    // Definici[on de variable message_len, que almacena la longitud del mensaje recibido.
+    // Definimos la estructura para almacenar la longitud del mensaje recibido.
     ssize_t message_len;
 
-    // Se define la estructura para almacenar la información del servidor.
+    // Definimos la estructura para almacenar la informacion de la dirección del servidor
     struct sockaddr_in server_addr;
 
-    // Se define la estructura para almacenar la información del cliente, ya que el servidor necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
+    // Definimos la estructura para almacenar la información de la dirección del cliente, 
+    // incluyendo el puerto y la IP desde la cual se envió el mensaje, para poder responderle.
     struct sockaddr_in client_addr;
 
-    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
+    // Almacenamos el tamaño en bytes de la dirección del servidor (para saber cuanta memoria se debe leer o escribir para obtener la información de la dirección).
     socklen_t server_len = sizeof(server_addr);
 
-    // Tamaño de la dirección del cliente (para saber cuantos bytes se debe leer o escribir en la estructura).
+    // Almacenamos el tamaño en bytes de la dirección del cliente (para saber cuanta memoria se debe leer o escribir para obtener la información de la dirección).
     socklen_t client_len = sizeof(client_addr);
 
-    // Inicializar el socket.
+    // Inicializamos el socket y almacenamos su identificador.
     fd = initialize_socket(&server_addr, server_len);
 
-    // Tabla de arrendamiento. Aquí se encuentran todos las ips que han sido asignadas con la MAC de los clientes e información del tiempo de inicio del arrendamiento y su duración.
+    // Definimos la estructura que va a almacenar los arrendamientos de las direcciones IP,
+    // almacenará todos las IPs que han sido asignadas, junto a la respectiva MAC de los clientes, el tiempo de inicio del arrendamiento y su duración.
     struct lease_entry leases[MAX_LEASES];
 
-    // Inicializar la tabla de arrendamientos.
+    // Inicializamos la tabla de arrendamientos.
     initialize_leases(leases);
 
     
-    // Al utilizar UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, está siempre listo para recibir mensajes, no como TCP, que se debe establecer una conexión con el cliente y no siempre está escuchando.
+    // Con UDP, el servidor puede recibir mensajes en cualquier momento a través del puerto especificado, 
+    // ya que siempre está listo para recibirlos. A diferencia de TCP, donde es necesario establecer 
+    // una conexión con el cliente antes de la comunicación, en UDP no se requiere esta conexión previa.
     printf("Esperando mensajes de clientes DHCP...\n");
 
-    // Este bucle hace que el servidor DHCP este constantemente esperando recibir mensajes.
+    // Utilizamos este bucle para que el servidor DHCP constantemente a la espera de mensajes de los clientes.
     while (1) {
-        // Reservar memoria para los argumentos del hilo.
+        // Reservamos un espacio en memoria para almacenar los argumentos que se le van a pasar al hilo.
         struct thread_args *args = malloc(sizeof(struct thread_args));
+
+        // Verificamos si se pudo reservar memoria para los argumentos del hilo.
         if (args == NULL) {
             error("Error al asignar memoria para los argumentos del hilo");
         }
 
-        // Recibir el mensaje del cliente.
+        // Al recibir un mensaje del cliente
 
-        // Se guarda el identificador del socket en los args.
+        // Guardamos el identificador del socket en los argumentos.
         args->fd = fd;
 
-        // Se guarda la longitud de la estructura de la diracción del cliente.
+        // Guardamos la longitud de la dirección del cliente en los argumentos.
         args->client_len = client_len;
 
-        // Se guarda el mensaje del cliente en los args (se guarda en el args->buffer el buffer obtenido en la función).
+        // Guardamos el mensaje del cliente en los argumentos,
+        // se guarda el buffer obtenido en la función en el buffer de los argumentos (args->buffer).
         message_len = receive_message(fd, args->buffer, &args->client_addr, &args->client_len);
 
-        // se guarda la tabla de arrendamiento en los args
+        // Guardamos la tabla de arrendamientos en los argumentos.
         args->leases = leases;
 
-        // Crear un nuevo hilo para procesar la solicitud.
+        // Para procesar la solicitud del cliente.
 
         // Definimos la variable que va a almacenar el id del hilo.
         pthread_t thread_id;
 
-        // Se crea un hilo para procesar la solicitud del cliente, se le pasa la función handle_client, que es la función que se encarga de procesar las solicitudes DHCP de los clientes.
-        // Se le pasa la estructura que va a almacenar el id del hilo para cuado se cree el mismo.
+        // Creamos un hilo para procesar la solicitud del cliente, a este, 
+        // se le pasa la función handle_client, que es la encargada de procesar las solicitudes DHCP de los clientes,
+        // y se le pasa la estructura que va a almacenar el id del hilo para cuando se cree.
         if (pthread_create(&thread_id, NULL, handle_client, (void *)args) != 0) {
             error("Error al crear el hilo");
         }
 
-        // Detach el hilo para que se limpie automáticamente al finalizar.
+        // Realizamos un detach del hilo, para que se libere la memoria una vez que el hilo termine su ejecución.
         pthread_detach(thread_id);
     }
 
-    // Cerrar el socket cuando ya no se use para evitar mal gastar recursos.
+    // Cerramos el socket una vez que el servidor termine su ejecución, para liberar los recursos utilizados.
     close(fd);
     return 0;
 }

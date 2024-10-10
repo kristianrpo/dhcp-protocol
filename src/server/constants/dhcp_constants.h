@@ -11,4 +11,4 @@
 #define IP_ERROR 0xFFFFFFFF // 255.255.255.255 para representar error.
 #define IP_SERVER_IDENTIFIER "192.168.0.2" // Dirección IP del servidor.
 
-#endif // DHCP_CONSTANTS_H
+#endif

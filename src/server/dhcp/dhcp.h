@@ -62,7 +62,7 @@ void check_state_leases(struct lease_entry leases[MAX_LEASES]);
 // Función para procesar los mensajes DHCP según el tipo.
 void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]);
 
-// Esta función maneja la lógica para procesar una solicitud DHCP de un cliente en un hilo separado.
+// Función para manejar la lógica para procesar una solicitud DHCP de un cliente en un hilo separado.
 // El parámetro args es un puntero a una estructura que contiene los argumentos necesarios para procesar la solicitud.
 // Basicamente cuando se necesita otro hilo, ese otro hilo ejecuta esta funcion para procesar solicitudes DHCP.
 void *handle_client(void *args);
