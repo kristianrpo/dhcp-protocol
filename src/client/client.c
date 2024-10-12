@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#define DHCP_SERVER_PORT 1067  // Puerto en el que el servidor está escuchando
+#define DHCP_SERVER_PORT 1069  // Puerto en el que el servidor está escuchando
 #define DHCP_CLIENT_PORT 1068  // Puerto del cliente DHCP
 #define BUFFER_SIZE 576        // Tamaño máximo del mensaje DHCP
 

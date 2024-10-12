@@ -18,7 +18,7 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     relay_addr->sin_family = AF_INET;
 
     // Configuración de que el socket va a tener asociado el puerto 1067 para DHCP. htons tranforma este numero en decimal a bits de red.
-    relay_addr->sin_port = htons(DHCP_SERVER_PORT);
+    relay_addr->sin_port = htons(DHCP_RELAY_PORT);
 
     // Configuración de la dirección IP donde el socket va a estar escuchando conexiones (el servidor para todas sus ips relacionadas con el puerto especificado va a estar escuchando). htonl tambien convierte a formato adecuado.
     relay_addr->sin_addr.s_addr = htonl(INADDR_ANY); 

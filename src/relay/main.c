@@ -60,7 +60,7 @@ int main() {
         server_addr.sin_port = htons(DHCP_SERVER_PORT);
 
         // Definición de la dirección IP del servidor.
-        server_addr.sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
+        server_addr.sin_addr.s_addr = inet_addr("255.255.255.255"); 
 
         // Reenviar el mensaje modificado al servidor DHCP.
         if (sendto(fd, buffer, message_len, 0,
@@ -71,16 +71,24 @@ int main() {
 
         printf("Mensaje DHCP reenviado al servidor DHCP.\n");
 
-        // Recibimos el mensaje por parte del servidor.
+
+        // Recibir la respuesta del servidor.
         message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
         printf("Respuesta del servidor DHCP recibida.\n");
 
-        // Reenviar la respuesta al cliente original.
-        if (sendto(fd, buffer, message_len, 0,
-                   (struct sockaddr*)&client_addr, client_len) < 0) {
-            error("Error al reenviar la respuesta al cliente");
+        // Modificar la dirección del cliente para enviar el mensaje en broadcast.
+        client_addr.sin_family = AF_INET;
+        client_addr.sin_port = htons(DHCP_CLIENT_PORT); 
+        client_addr.sin_addr.s_addr = inet_addr("255.255.255.255");  
+
+        // Reenviar la respuesta al cliente en broadcast.
+        if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {
+            error("Error al reenviar la respuesta en broadcast al cliente");
             continue;
         }
+
+
+
         printf("Respuesta reenviada al cliente DHCP.\n");
 
     }
