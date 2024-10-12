@@ -81,7 +81,7 @@ int main() {
         // Modificar la dirección del cliente para enviar el mensaje en broadcast.
         client_addr.sin_family = AF_INET;
         client_addr.sin_port = htons(DHCP_CLIENT_PORT); 
-        client_addr.sin_addr.s_addr = INADDR_BROADCAST;  
+        client_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);  
 
         // Reenviar la respuesta al cliente en broadcast.
         if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {
