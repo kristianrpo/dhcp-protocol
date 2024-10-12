@@ -23,7 +23,7 @@ int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
     server_addr->sin_port = htons(DHCP_SERVER_PORT);
 
     // Configuramos la dirección IP donde el socket va a estar escuchando conexiones (todas las ip relacionadas a dicho puerto), usamos htonl para convertir al formato adecuado.
-    server_addr->sin_addr.s_addr = htonl(INADDR_ANY); 
+    server_addr->sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
 
     // Enlazamos el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parámetros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, el tamaño de la estructura que definimos para que se sepa cuanta memoria debe leer.

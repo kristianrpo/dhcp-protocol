@@ -62,7 +62,7 @@ int main() {
         server_addr.sin_port = htons(DHCP_SERVER_PORT);
 
         // Definición de la dirección IP del servidor.
-        server_addr.sin_addr.s_addr = inet_addr("255.255.255.255"); 
+        server_addr.sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
 
         // Reenviar el mensaje modificado al servidor DHCP.
         if (sendto(fd, buffer, message_len, 0,
