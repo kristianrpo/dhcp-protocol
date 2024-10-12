@@ -193,10 +193,20 @@ int main() {
 // Crear socket UDP
 int creatingSocket() {
     int sockfd;
+    int broadcast_enable = 1;
+    int ret;
+
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
         error("Error al crear el socket");
     }
+    ret = setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
+    if (ret < 0) {
+        perror("Error habilitando la opción de broadcast");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
     return sockfd;
 }
 
@@ -205,7 +215,7 @@ void setupServer(struct sockaddr_in *server_addr) {
     memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
     server_addr->sin_port = htons(DHCP_SERVER_PORT);
-    server_addr->sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_addr->sin_addr.s_addr = inet_addr("192.168.20.40");
 }
 
 // Configurar la dirección del cliente (local)
@@ -213,7 +223,7 @@ void setupClient(struct sockaddr_in *client_addr, int sockfd) {
     memset(client_addr, 0, sizeof(*client_addr));
     client_addr->sin_family = AF_INET;
     client_addr->sin_port = htons(DHCP_CLIENT_PORT);
-    client_addr->sin_addr.s_addr = INADDR_ANY;
+    client_addr->sin_addr.s_addr = htonl(INADDR_ANY);
 
     // Enlazar el socket a la dirección local.
     if (bind(sockfd, (struct sockaddr *)client_addr, sizeof(*client_addr)) < 0) {

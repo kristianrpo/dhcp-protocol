@@ -3,6 +3,7 @@
 int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     // Definición de variable que va a almacenar el socker.
     int fd;
+    int broadcast_enable = 1;
 
     // Asignación a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
     fd = socket(AF_INET,SOCK_DGRAM,0); 
@@ -11,6 +12,14 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     if(fd<0){
          error("No se pudo crear el socket");
          exit(EXIT_FAILURE);
+    }
+
+    // Habilitar la opción de broadcast en el socket
+    int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
+    if (ret < 0) {
+        perror("Error habilitando la opción de broadcast");
+        close(fd);
+        exit(EXIT_FAILURE);
     }
 
     // Configuración de la estructura donde se va a almacenar la ip y el puerto.

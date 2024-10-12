@@ -9,6 +9,6 @@
 #define LEASE_DURATION_RESERVED 10 // Duración de un arrendamiento cuando se reserva a un cliente en segundos.
 #define LEASE_DURATION_OCCUPIED 3600 // Duración de un arrendamiento cuando se asigna a un cliente en segundos.
 #define IP_ERROR 0xFFFFFFFF // 255.255.255.255 para representar error.
-#define IP_SERVER_IDENTIFIER "192.168.1.100" // Dirección IP del servidor.
+#define IP_SERVER_IDENTIFIER "192.168.20.40" // Dirección IP del servidor.
 
 #endif
