@@ -39,11 +39,11 @@ int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
 }
 
 // Función para recibir un mensaje del socket
-ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *client_addr, socklen_t *client_len) {
+ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, socklen_t *relay_len) {
     
     // Almacenamos el numero de bytes recibidos del datagrama/mensaje correspondiente.
     // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer.
-    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)client_addr, client_len);
+    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)relay_addr, relay_len);
 
     // Comprobamos si ocurrió un error durante la recepción del mensaje.
     if (msg_len < 0) {

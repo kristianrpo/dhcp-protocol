@@ -37,8 +37,8 @@ struct dhcp_message {
 // Estructura para los argumentos de los hilos. Esta está diseñada para contener todos los datos que cada hilo necesitará para procesar una solicitud de cliente DHCP.
 struct thread_args {
     int fd;                             // Id del socket.
-    struct sockaddr_in client_addr;     // Dirección del cliente.
-    socklen_t client_len;               // Longitud de la dirección del cliente.
+    struct sockaddr_in relay_addr;     // Dirección del cliente.
+    socklen_t relay_len;               // Longitud de la dirección del cliente.
     char buffer[BUFFER_SIZE];           // Buffer que almacena los datos recibidos de manera temporal.
     struct lease_entry *leases;         // Tabla de arrendamientos.
 };

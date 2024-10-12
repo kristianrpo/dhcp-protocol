@@ -16,6 +16,6 @@
 int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len);
 
 // Función para recibir un mensaje desde el socket.
-ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *client_addr, socklen_t *client_len);
+ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, socklen_t *relay_len);
 
 #endif

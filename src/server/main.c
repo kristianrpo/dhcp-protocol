@@ -23,13 +23,13 @@ int main(){
 
     // Definimos la estructura para almacenar la información de la dirección del cliente, 
     // incluyendo el puerto y la IP desde la cual se envió el mensaje, para poder responderle.
-    struct sockaddr_in client_addr;
+    struct sockaddr_in relay_addr;
 
     // Almacenamos el tamaño en bytes de la dirección del servidor (para saber cuanta memoria se debe leer o escribir para obtener la información de la dirección).
     socklen_t server_len = sizeof(server_addr);
 
     // Almacenamos el tamaño en bytes de la dirección del cliente (para saber cuanta memoria se debe leer o escribir para obtener la información de la dirección).
-    socklen_t client_len = sizeof(client_addr);
+    socklen_t relay_len = sizeof(relay_addr);
 
     // Inicializamos el socket y almacenamos su identificador.
     fd = initialize_socket(&server_addr, server_len);
@@ -63,11 +63,11 @@ int main(){
         args->fd = fd;
 
         // Guardamos la longitud de la dirección del cliente en los argumentos.
-        args->client_len = client_len;
+        args->relay_len = relay_len;
 
         // Guardamos el mensaje del cliente en los argumentos,
         // se guarda el buffer obtenido en la función en el buffer de los argumentos (args->buffer).
-        message_len = receive_message(fd, args->buffer, &args->client_addr, &args->client_len);
+        message_len = receive_message(fd, args->buffer, &args->relay_addr, &args->relay_len);
 
         printf("Mensaje recibido del cliente DHCP. HELOY\n");
 

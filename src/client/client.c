@@ -121,8 +121,12 @@ int main() {
 
     // Esperar respuesta del servidor (DHCPOFFER)
     socklen_t server_len = sizeof(server_addr);
+
+    printf("Entre al recvfrom\n");
     ssize_t recv_len = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, 
                                 (struct sockaddr *)&server_addr, &server_len);
+    printf("recv_len: %zd\n", recv_len);
+
     if (recv_len > 0) {
         printf("Respuesta recibida del servidor DHCP\n");
 
@@ -208,7 +212,7 @@ void setupServer(struct sockaddr_in *server_addr) {
 void setupClient(struct sockaddr_in *client_addr, int sockfd) {
     memset(client_addr, 0, sizeof(*client_addr));
     client_addr->sin_family = AF_INET;
-    client_addr->sin_port = htons(0);
+    client_addr->sin_port = htons(DHCP_CLIENT_PORT);
     client_addr->sin_addr.s_addr = INADDR_ANY;
 
     // Enlazar el socket a la dirección local.

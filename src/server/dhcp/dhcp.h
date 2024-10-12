@@ -48,19 +48,19 @@ void set_dns_server(uint8_t *options, int *index);
 void set_server_identifier(uint8_t *options, int *index);
 
 // Función para enviar un DHCPOFFER.
-void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]);
+void send_dhcp_offer(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]);
 
 // Función para enviar un DHCPNAK.
-void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg);
+void send_dhcp_nak(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *request_msg);
 
 // Función para enviar un DHCPACK.
-void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]);
+void send_dhcp_ack(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]);
 
 // Función para verificar si un arrendamiento ha expirado y liberar la IP.
 void check_state_leases(struct lease_entry leases[MAX_LEASES]);
 
 // Función para procesar los mensajes DHCP según el tipo.
-void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]);
+void process_dhcp_message(int message_type, int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]);
 
 // Función para manejar la lógica para procesar una solicitud DHCP de un cliente en un hilo separado.
 // El parámetro args es un puntero a una estructura que contiene los argumentos necesarios para procesar la solicitud.

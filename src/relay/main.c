@@ -44,6 +44,8 @@ int main() {
         // Recibir mensaje DHCP ya sea del cliente o del servidor.
         message_len = receive_message_client(fd, buffer, &client_addr, &client_len);
 
+        printf("DHCPDISCOVER recibido del cliente.\n");
+
         // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor.
         // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura.
         struct dhcp_message *msg = (struct dhcp_message *)buffer;
@@ -69,12 +71,12 @@ int main() {
             continue;
         }
 
-        printf("Mensaje DHCP reenviado al servidor DHCP.\n");
+        printf("DHCPDISCOVER reenviado al servidor DHCP.\n");
 
 
         // Recibir la respuesta del servidor.
         message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
-        printf("Respuesta del servidor DHCP recibida.\n");
+        printf("DHCPOFFER recibido del servidor.\n");
 
         // Modificar la dirección del cliente para enviar el mensaje en broadcast.
         client_addr.sin_family = AF_INET;
@@ -87,9 +89,7 @@ int main() {
             continue;
         }
 
-
-
-        printf("Respuesta reenviada al cliente DHCP.\n");
+        printf("DHCPOFFER reenviado al cliente.\n");
 
     }
     // Cerrar el socket cuando ya no se use para evitar mal gastar recursos.

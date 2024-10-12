@@ -223,7 +223,7 @@ void set_server_identifier(uint8_t *options, int *index) {
 }
 
 // Función para enviar un DHCPOFFER.
-void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
+void send_dhcp_offer(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *discover_msg, struct lease_entry leases[MAX_LEASES]) {
     // Definimos la estructura que va a almacenar el mensaje de oferta que se va a enviar al cliente.
     struct dhcp_message offer_msg;
 
@@ -281,18 +281,18 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
     offer_msg.options[index+6] = 255; 
     
     // Utilizamos la función sendto para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
-    ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)client_addr, client_len);
+    ssize_t sent_len = sendto(fd, &offer_msg, sizeof(offer_msg), 0, (struct sockaddr *)relay_addr, relay_len);
 
     // Verificamos si el valor que retorna la función es menor que 0, significa que el mensaje no se pudo enviar satisfactoriamente.
     if (sent_len < 0) {
         error("Error al enviar DHCPOFFER");
     } else {
-        printf("DHCPOFFER enviado a %s\n", inet_ntoa(client_addr->sin_addr));
+        printf("DHCPOFFER enviado a %s\n", inet_ntoa(relay_addr->sin_addr));
     }
 }
 
 // Función para enviar un DHCPNAK.
-void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg) {
+void send_dhcp_nak(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *request_msg) {
     // Definimos la estructura que va a almacenar el mensaje que se va a enviar al cliente.
     struct dhcp_message nak_msg;
     
@@ -319,7 +319,7 @@ void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     nak_msg.options[index] = 255; 
 
     // Enviamos el mensaje DHCPNAK.
-    ssize_t sent_len = sendto(fd, &nak_msg, sizeof(nak_msg), 0, (struct sockaddr *)client_addr, client_len);
+    ssize_t sent_len = sendto(fd, &nak_msg, sizeof(nak_msg), 0, (struct sockaddr *)relay_addr, relay_len);
 
     // Verificamos si el valor que retorna la función es menor que 0, significa que el mensaje no se pudo enviar satisfactoriamente.
     if (sent_len < 0) {
@@ -364,7 +364,7 @@ uint32_t get_requested_ip(struct dhcp_message *request_msg) {
 }
 
 // Función para enviar un DHCPACK.
-void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]) { 
+void send_dhcp_ack(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *request_msg, struct lease_entry leases[MAX_LEASES]) { 
     // Obtenemos la IP solicitada por el cliente desde la opción 50 (Requested IP Address).
     uint32_t requested_ip = get_requested_ip(request_msg);
 
@@ -372,7 +372,7 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     uint32_t assigned_ip = assign_ip_to_client(leases, requested_ip, request_msg->chaddr);
     // Verificamos si la ip no se pudo asignar y mandamos un mensaje DHCPNAK.
     if (assigned_ip == IP_ERROR) {
-        send_dhcp_nak(fd, client_addr, client_len, request_msg);
+        send_dhcp_nak(fd, relay_addr, relay_len, request_msg);
     }
     // Verificamos si la ip se pudo asignar y mandamos un mensaje DHCPACK.
     else {
@@ -411,7 +411,7 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
         ack_msg.options[index] = 255; 
 
         // Enviamos el mensaje DHCPACK.
-        ssize_t sent_len = sendto(fd, &ack_msg, sizeof(ack_msg), 0, (struct sockaddr *)client_addr, client_len);
+        ssize_t sent_len = sendto(fd, &ack_msg, sizeof(ack_msg), 0, (struct sockaddr *)relay_addr, relay_len);
 
         // Verificamos si el valor que retorna la función es menor que 0, significa que el mensaje no se pudo enviar satisfactoriamente.
         if (sent_len < 0) {
@@ -453,7 +453,7 @@ void check_state_leases(struct lease_entry leases[MAX_LEASES]) {
 }
 
 // Función para procesar el mensaje DHCP según su tipo.
-void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_addr, socklen_t client_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
+void process_dhcp_message(int message_type, int fd, struct sockaddr_in *relay_addr, socklen_t relay_len, struct dhcp_message *msg, struct lease_entry leases[MAX_LEASES]) {
     // Verificamos si un arrendamiento ha expirado y liberamos la IP.
     check_state_leases(leases);
     // Procesamos el mensaje según su tipo.
@@ -461,12 +461,12 @@ void process_dhcp_message(int message_type, int fd, struct sockaddr_in *client_a
         case 1: 
             printf("Mensaje DHCPDISCOVER recibido\n");
             // Luego de recibir el mensaje DHCPDISCOVER, se envía un DHCPOFFER al cliente.
-            send_dhcp_offer(fd, client_addr, client_len, msg, leases); 
+            send_dhcp_offer(fd, relay_addr, relay_len, msg, leases); 
             break;
         case 3:
             printf("Mensaje DHCPREQUEST recibido\n");
             // Luego de recibir el mensaje DHCPREQUEST, se envía un DHCPACK al cliente.
-            send_dhcp_ack(fd, client_addr, client_len, msg, leases);
+            send_dhcp_ack(fd, relay_addr, relay_len, msg, leases);
             break;
         default:
             printf("Mensaje DHCP desconocido o no soportado, tipo: %d\n", message_type);
@@ -491,7 +491,7 @@ void *handle_client(void *args) {
     }
 
     // Procesamos el mensaje según su tipo.
-    process_dhcp_message(message_type, thread_data->fd, &thread_data->client_addr, thread_data->client_len, msg, thread_data->leases);
+    process_dhcp_message(message_type, thread_data->fd, &thread_data->relay_addr, thread_data->relay_len, msg, thread_data->leases);
 
     // Liberamos la memoria reservada para los argumentos del hilo.
     free(args);
