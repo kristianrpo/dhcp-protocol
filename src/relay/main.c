@@ -4,10 +4,17 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
+#include <unistd.h>
+#include <net/if.h>
 #include "socket/socket.h"
 #include "structs/relay_structs.h"
 #include "constants/relay_constants.h"
 #include "error/error.h"
+
+#define INTERFACE "enp0s3"  // Especificar la interfaz de red
+
 
 int main() {
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
@@ -39,6 +46,9 @@ int main() {
 
     // Inicializar el socket.
     fd = initialize_socket(&relay_addr, relay_len);
+
+    int broadcast_enable = 1;
+    struct ifreq ifr;
 
     while (1) {
         // Recibir mensaje DHCP ya sea del cliente o del servidor.
@@ -78,10 +88,26 @@ int main() {
         message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
         printf("DHCPOFFER recibido del servidor.\n");
 
+        // Habilitar la opción de broadcast en el socket
+        int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
+        if (ret < 0) {
+            perror("Error habilitando la opción de broadcast");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+
+        // Asociar el socket de recepción a la interfaz específica sin IP
+        memset(&ifr, 0, sizeof(ifr));
+        strncpy(ifr.ifr_name, INTERFACE, IFNAMSIZ - 1);
+        if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
+            perror("Error vinculando el socket de recepción a la interfaz");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
         // Modificar la dirección del cliente para enviar el mensaje en broadcast.
         client_addr.sin_family = AF_INET;
         client_addr.sin_port = htons(DHCP_CLIENT_PORT); 
-        client_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);  
+        client_addr.sin_addr.s_addr = inet_addr("192.168.56.255");  
 
         // Reenviar la respuesta al cliente en broadcast.
         if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {

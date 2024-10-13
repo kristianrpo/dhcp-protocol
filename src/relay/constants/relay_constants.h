@@ -3,8 +3,8 @@
 
 #define DHCP_SERVER_PORT 1067
 #define DHCP_CLIENT_PORT 1068
-#define DHCP_RELAY_PORT 1069
-#define IP_SERVER_IDENTIFIER "192.168.20.40" // Dirección IP del servidor.
+#define DHCP_RELAY_PORT 1067
+#define IP_SERVER_IDENTIFIER "192.168.57.3" // Dirección IP del servidor.
 #define BUFFER_SIZE 576
 
 #endif 

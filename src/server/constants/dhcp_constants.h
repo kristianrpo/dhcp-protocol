@@ -5,10 +5,10 @@
 #define BUFFER_SIZE 576 // Tamaño del buffer (lo que puede almacenar).
 
 #define MAX_LEASES 50 // Maximo numero de arrendamientos.
-#define START_IP "192.168.0.21" // Dirección IP inicial para asignar a los clientes.
+#define START_IP "192.168.56.21" // Dirección IP inicial para asignar a los clientes.
 #define LEASE_DURATION_RESERVED 10 // Duración de un arrendamiento cuando se reserva a un cliente en segundos.
 #define LEASE_DURATION_OCCUPIED 3600 // Duración de un arrendamiento cuando se asigna a un cliente en segundos.
 #define IP_ERROR 0xFFFFFFFF // 255.255.255.255 para representar error.
-#define IP_SERVER_IDENTIFIER "192.168.20.40" // Dirección IP del servidor.
+#define IP_SERVER_IDENTIFIER "192.168.57.3" // Dirección IP del servidor.
 
 #endif
