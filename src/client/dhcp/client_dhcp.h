@@ -14,3 +14,7 @@ void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype,
 // Función para configurar el tipo de mensaje en las opciones del mensaje DHCP
 void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, 
                       uint8_t option_value);
+
+void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip);
+
+void set_server_identifier(uint8_t *options, int *index, uint32_t server_identifier);

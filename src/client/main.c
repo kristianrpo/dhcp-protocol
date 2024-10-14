@@ -127,6 +127,24 @@ uint8_t *get_mac_address(const char *interface) {
     return mac;  // Retornar el puntero a la dirección MAC
 }
 
+void assign_ip_to_interface(const char *interface, struct dhcp_message *msg) { 
+    char command[256];
+
+    struct in_addr ip_addr;
+    char subnet_prefix[4] = "24";  // Prefijo quemado /24
+
+    // Extraer la IP asignada desde el campo yiaddr del mensaje DHCPACK.
+    ip_addr.s_addr = msg->yiaddr;
+
+    // Asignar la nueva dirección IP con el prefijo quemado
+    snprintf(command, sizeof(command), "sudo ip addr add %s/%s dev %s", inet_ntoa(ip_addr), subnet_prefix, interface);
+    system(command);
+
+    // Activar la interfaz
+    snprintf(command, sizeof(command), "sudo ip link set dev %s up", interface);
+    system(command);
+}
+
 int main() {
     // Inicializar el socket
     int send_socket;
@@ -143,7 +161,7 @@ int main() {
     socklen_t relay_len = sizeof(relay_addr);
 
     // Se define la estructura que van a tener los mensajes DHCP.
-    struct dhcp_message discover_msg;
+    struct dhcp_message discover_msg, request_msg;
 
     // Buffer para almacenar los mensajes.
     char buffer[BUFFER_SIZE];
@@ -151,7 +169,7 @@ int main() {
     // Definimos la estructura para almacenar la longitud del mensaje recibido.
     ssize_t message_len;
 
-    struct dhcp_message *offer_msg;
+    struct dhcp_message *offer_msg, *ack_msg;
 
     // ----
 
@@ -191,8 +209,6 @@ int main() {
     }
 
     printf("Mensaje de broadcast enviado al puerto %d desde la interfaz enp0s3\n",DHCP_RELAY_PORT);
-    close(send_socket);
-
 
     // Crear el socket RAW socket para poder recibir mensajes broadcast sin tener la interfaz ip asignada.
     recv_socket = initialize_RAW_socket(&client_addr, client_len);
@@ -214,6 +230,84 @@ int main() {
 
     // Se verifica que el mensaje es un DHCP OFFER
     int dhcp_type = get_dhcp_message_type(offer_msg);
+
+    if (dhcp_type == 2) {
+        printf("Mensaje DHCPOFFER recibido correctamente\n");
+        print_network_config(offer_msg);
+    } else {
+        printf("No se recibió un DHCPOFFER. Tipo de mensaje recibido: %d\n", dhcp_type);
+    }
+
+    memset(&request_msg, 0, sizeof(request_msg));
+
+    configure_dhcp_message(&request_msg, 1, 1, 6, offer_msg->xid, htons(0x8000), chaddr);
+
+    int request_index = 0;
+    
+    // Se configura el mensaje DHCP para que sea un mensaje de request.
+    set_type_message(request_msg.options, &request_index, 53, 1, 3);
+
+    // Se configura la IP solicitada.
+    set_requested_ip(request_msg.options, &request_index, offer_msg->yiaddr);
+
+    uint32_t server_ip = inet_addr(IP_SERVER_IDENTIFIER);
+
+    // Se configura la dirección IP del servidor.
+    set_server_identifier(request_msg.options, &request_index, server_ip);
+
+    // Se establece el final de las opciones.
+    request_msg.options[request_index] = 255;
+
+    relay_addr.sin_family = AF_INET;
+
+    // Configuración del puerto del relay.
+    relay_addr.sin_port = htons(DHCP_RELAY_PORT);
+
+    // Se define que se le mandara el mensaje de broadcast al puerto del relay.
+    relay_addr.sin_addr.s_addr = inet_addr(BROADCAST_IP);
+
+    if (sendto(send_socket, &request_msg, sizeof(request_msg), 0, (struct sockaddr*)&relay_addr, relay_len) < 0) {
+        perror("Error al enviar mensaje");
+        close(send_socket);
+        exit(EXIT_FAILURE);
+    }
+
+    int send_type = get_dhcp_message_type(&request_msg);
+    printf("El tipo de mensaje que se envio fue un: %d\n", send_type);
+    printf("La IP solicitada fue: %s\n", inet_ntoa(*(struct in_addr *)&request_msg.options[5]));
+    printf("La IP del servidor fue: %s\n", inet_ntoa(*(struct in_addr *)&request_msg.options[11]));
+
+    printf("Mensaje de broadcast enviado al puerto %d desde la interfaz enp0s3\n",DHCP_RELAY_PORT);
+
+    close(send_socket);
+
+    printf("Esperando mensaje DHCP ACK UDP en broadcast...\n");
+
+    // Recibir mensaje DHCP ACK
+    while(1) {
+        message_len = receive_message(recv_socket, buffer, &relay_addr, &relay_len);
+
+        ack_msg = process_msg(buffer);
+        if (ack_msg != NULL) {
+            printf("Mensaje UDP recibido\n");
+            break;
+        }
+    }
+
+    int ack_type = get_dhcp_message_type(ack_msg);
+
+    if (ack_type == 5) {
+        printf("Mensaje DHCPACK recibido correctamente\n");
+        print_network_config(ack_msg);
+        struct in_addr ip_addr, subnet_mask, gateway;
+
+        assign_ip_to_interface(interface, ack_msg);
+    } else {
+        printf("No se recibió un DHCPACK. Tipo de mensaje recibido: %d\n", ack_type);
+    }
+
+    close(recv_socket);
+
 
     return 0;
 }

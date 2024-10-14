@@ -16,35 +16,44 @@
 #define INTERFACE "enp0s3"  // Especificar la interfaz de red
 
 
+int get_dhcp_message_type(struct dhcp_message *msg) {
+    // Definimos la variable de control para recorrer el campo de options.
+    int i = 0;
+    // Recorremos el campo de 'options' del datagrama recibido, options puede tener una cantidad de opciones variable, por lo tanto, tenemos que recorrer options hasta encontrar la opción 53, que es la que contiene el mensaje para la acción a realizar. Se recorre hasta 312 porque el campo options como maximo puede medir 312 bytes según estandarización.
+    while (i < 312) {
+        // Verificamos si la opción es 255, que indica el final de las opciones y salimos del ciclo.
+        if (msg->options[i] == 255) {
+            break;
+        }
+        
+        // Revisamos si estamos en la opción 53 (Tipo de mensaje DHCP).
+        if (msg->options[i] == 53) {
+            // Aseguramos que la longitud del mensaje DHCP denota que el mismo existe.
+            if (msg->options[i + 1] == 1) {
+                // El valor del tipo de mensaje está en el tercer byte.
+                return msg->options[i + 2]; 
+                
+            } else {
+                // Retornamos 'error' si la longitud del mensaje DHCP no es la esperada.
+                return -1;
+            }
+        }
+        
+        // Avanzamos al siguiente campo de opciones, se avanza de esta manera puesto que cada opcion mide diferente, asi que se obtiene la siguiente opción de manera 'dinamica'.
+        i += msg->options[i + 1] + 2;
+    }
+    // Devolvemos 'error' si no encontramos la opción 53.
+    return -1;  
+}
+
 int main() {
-    // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE];
-
-    // Definición de variable fd, que contiene el socket creado.
     int fd;
-
-    // Definici[on de variable message_len, que almacena la longitud del mensaje recibido.
     ssize_t message_len;
+    struct sockaddr_in client_addr, server_addr, relay_addr;
+    socklen_t client_len = sizeof(client_addr), server_len = sizeof(server_addr), relay_len = sizeof(relay_addr);
 
-    // Se define la estructura para almacenar la información del cliente, ya que el dhcp relay necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del cliente.
-    struct sockaddr_in client_addr;
-
-    // Se define la estructura para almacenar la información del servidor, ya que el dhcp relay necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del servidor.
-    struct sockaddr_in server_addr;
-
-    // Se define la estructura para almacenar la información del servidor, ya que el dhcp relay necesita saber quien mandó un mensaje. Es importante reconocer el puerto y la ip desde la cual se envió el mensaje del servidor.
-    struct sockaddr_in relay_addr;
-
-    // Tamaño de la dirección del cliente (para saber cuantos bytes se debe leer o escribir en la estructura).
-    socklen_t client_len = sizeof(client_addr);
-
-    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
-    socklen_t server_len = sizeof(server_addr);
-
-    // Tamaño de la dirección del servidor (para saber cuantos bytes se debe leer o escribir en la estructura).
-    socklen_t relay_len = sizeof(relay_addr);
-
-    // Inicializar el socket.
+    // Inicializar el socket
     fd = initialize_socket(&relay_addr, relay_len);
 
     int broadcast_enable = 1;
@@ -53,72 +62,72 @@ int main() {
     while (1) {
         // Recibir mensaje DHCP ya sea del cliente o del servidor.
         message_len = receive_message_client(fd, buffer, &client_addr, &client_len);
+        printf("DHCP recibido del cliente.\n");
 
-        printf("DHCPDISCOVER recibido del cliente.\n");
-
-        // El mensaje que llega al servidor DHCP es una secuencia de bits, pudiendose considerar que la información está encapsulada, C como tal no es capaz de decodificar esta estructura para acceder a la información, por lo tanto, debemos definir una estructura que permita convertir esos simples bienarios en información accesible y operable para el servidor.
-        // Convertir el buffer a un mensaje DHCP. Se utiliza el casting de C para tratar bits crudos como una estructura.
+        // Convertir el buffer a un mensaje DHCP
         struct dhcp_message *msg = (struct dhcp_message *)buffer;
 
-        // Se asigna la IP del relay en el campo correspondiente del mensaje DHCP.
-        msg->giaddr = relay_addr.sin_addr.s_addr; 
+        // Obtener el tipo de mensaje DHCP
+        int dhcp_type = get_dhcp_message_type(msg);
 
-        // Configuración de la estructura donde se va a almacenar la ip y el puerto del servidor.
-        // Esto es necesario puesto que el dhcp relay debe conocer a que socket se le debe reenviar el mensaje en el servidor.
-        // Definición IPv4.
+        // Se asigna la IP del relay en el campo correspondiente del mensaje DHCP
+        msg->giaddr = relay_addr.sin_addr.s_addr;
+
+        // Configuración de la estructura de servidor
         server_addr.sin_family = AF_INET;
-
-        // Definición del puerto del servidor.
         server_addr.sin_port = htons(DHCP_SERVER_PORT);
+        server_addr.sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER);
 
-        // Definición de la dirección IP del servidor.
-        server_addr.sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
+        if (dhcp_type == 1) {  // DHCPDISCOVER
+            printf("Reenviando DHCPDISCOVER al servidor...\n");
 
-        // Reenviar el mensaje modificado al servidor DHCP.
-        if (sendto(fd, buffer, message_len, 0,
-                   (struct sockaddr *)&server_addr, server_len) < 0) {
-            error("Error al reenviar al servidor DHCP");
-            continue;
+            if (sendto(fd, buffer, message_len, 0, (struct sockaddr *)&server_addr, server_len) < 0) {
+                error("Error al reenviar DHCPDISCOVER al servidor");
+                continue;
+            }
+
+            // Recibir DHCPOFFER del servidor
+            message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
+            printf("DHCPOFFER recibido del servidor.\n");
+
+            // Reenviar la respuesta DHCPOFFER al cliente
+            client_addr.sin_family = AF_INET;
+            client_addr.sin_port = htons(DHCP_CLIENT_PORT);
+            client_addr.sin_addr.s_addr = inet_addr("192.168.56.255");
+
+            if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {
+                error("Error al reenviar DHCPOFFER al cliente");
+                continue;
+            }
+
+            printf("DHCPOFFER reenviado al cliente.\n");
+
+        } else if (dhcp_type == 3) {  // DHCPREQUEST
+            printf("Reenviando DHCPREQUEST al servidor...\n");
+
+            if (sendto(fd, buffer, message_len, 0, (struct sockaddr *)&server_addr, server_len) < 0) {
+                error("Error al reenviar DHCPREQUEST al servidor");
+                continue;
+            }
+
+            // Recibir DHCPACK del servidor
+            message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
+            printf("DHCPACK recibido del servidor.\n");
+
+            // Reenviar la respuesta DHCPOFFER al cliente
+            client_addr.sin_family = AF_INET;
+            client_addr.sin_port = htons(DHCP_CLIENT_PORT);
+            client_addr.sin_addr.s_addr = inet_addr("192.168.56.255");
+
+            if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {
+                error("Error al reenviar DHCPOFFER al cliente");
+                continue;
+            }
+
+            printf("DHCPACK reenviado al cliente.\n");
         }
-
-        printf("DHCPDISCOVER reenviado al servidor DHCP.\n");
-
-
-        // Recibir la respuesta del servidor.
-        message_len = receive_message_server(fd, buffer, &server_addr, &server_len);
-        printf("DHCPOFFER recibido del servidor.\n");
-
-        // Habilitar la opción de broadcast en el socket
-        int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
-        if (ret < 0) {
-            perror("Error habilitando la opción de broadcast");
-            close(fd);
-            exit(EXIT_FAILURE);
-        }
-
-        // Asociar el socket de recepción a la interfaz específica sin IP
-        memset(&ifr, 0, sizeof(ifr));
-        strncpy(ifr.ifr_name, INTERFACE, IFNAMSIZ - 1);
-        if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
-            perror("Error vinculando el socket de recepción a la interfaz");
-            close(fd);
-            exit(EXIT_FAILURE);
-        }
-        // Modificar la dirección del cliente para enviar el mensaje en broadcast.
-        client_addr.sin_family = AF_INET;
-        client_addr.sin_port = htons(DHCP_CLIENT_PORT); 
-        client_addr.sin_addr.s_addr = inet_addr("192.168.56.255");  
-
-        // Reenviar la respuesta al cliente en broadcast.
-        if (sendto(fd, buffer, message_len, 0, (struct sockaddr*)&client_addr, client_len) < 0) {
-            error("Error al reenviar la respuesta en broadcast al cliente");
-            continue;
-        }
-
-        printf("DHCPOFFER reenviado al cliente.\n");
-
     }
-    // Cerrar el socket cuando ya no se use para evitar mal gastar recursos.
+
     close(fd);
     return 0;
 }

@@ -44,3 +44,27 @@ void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t
     // Incrementamos el índice para la siguiente opción (se avanzan 3 posiciones).
     *index += 3; 
 }
+
+// Función para configurar la dirección IP solicitada en las opciones del mensaje DHCP
+void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip) {
+    // Configuramos la opción de la IP solicitada en las opciones del mensaje DHCP en el índice especificado.
+    options[*index] = 50;  // Opción 50 es la IP solicitada.
+    // Asignamos la longitud de la opción para indicar la longitud del valor a enviar.
+    options[*index + 1] = 4;  // Longitud de la dirección IP.
+    // Copiamos la dirección IP solicitada en la estructura del mensaje DHCP.
+    memcpy(&options[*index + 2], &requested_ip, 4);  // Copiamos 4 bytes de la IP solicitada.
+    // Incrementamos el índice para la siguiente opción (se avanzan 6 posiciones).
+    *index += 6; 
+}
+
+// Función para configurar la dirección IP del servidor en las opciones del mensaje DHCP
+void set_server_identifier(uint8_t *options, int *index, uint32_t server_identifier) {
+    // Configuramos la opción de la dirección IP del servidor en las opciones del mensaje DHCP en el índice especificado.
+    options[*index] = 54;  // Opción 54 es la dirección IP del servidor.
+    // Asignamos la longitud de la opción para indicar la longitud del valor a enviar.
+    options[*index + 1] = 4;  // Longitud de la dirección IP.
+    // Copiamos la dirección IP del servidor en la estructura del mensaje DHCP.
+    memcpy(&options[*index + 2], &server_identifier, 4);  // Copiamos 4 bytes de la dirección IP del servidor.
+    // Incrementamos el índice para la siguiente opción (se avanzan 6 posiciones).
+    *index += 6; 
+}

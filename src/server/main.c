@@ -69,7 +69,7 @@ int main(){
         // se guarda el buffer obtenido en la función en el buffer de los argumentos (args->buffer).
         message_len = receive_message(fd, args->buffer, &args->relay_addr, &args->relay_len);
 
-        printf("Mensaje recibido del cliente DHCP. HELOY\n");
+        printf("Mensaje recibido del cliente DHCP.\n");
 
         // Guardamos la tabla de arrendamientos en los argumentos.
         args->leases = leases;
