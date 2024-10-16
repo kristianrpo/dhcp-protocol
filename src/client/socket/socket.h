@@ -17,9 +17,15 @@
 
 
 #include "../error/error.h"
-#include "../structs/client_structs.h"
+#include "../structs/structs.h"
 
+// Función para inicializar el socket DGRAM.
 int initialize_DGRAM_socket(struct sockaddr_in *client_addr, socklen_t client_len);
+
+// Función para inicializar el socket RAW.
 int initialize_RAW_socket(struct sockaddr_in *client_addr, socklen_t client_len);
+
+// Función para recibir un mensaje del socket.
 ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, socklen_t *relay_len);
+
 #endif

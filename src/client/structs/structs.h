@@ -1,10 +1,10 @@
-#ifndef RELAY_STRUCTS_H
-#define RELAY_STRUCTS_H
+#ifndef STRUCTS_H
+#define STRUCTS_H
 
 #include <stdint.h>
 #include <time.h>
 #include <netinet/in.h>
-#include "../constants/client_constants.h" 
+#include "../constants/constants.h" 
 
 struct dhcp_message {
     uint8_t op;             // Define el tipo de operacion del paquete, =1 si es una solicitud proveniente de un cliente, =2 si es una respuesta proveniente del servidor.      

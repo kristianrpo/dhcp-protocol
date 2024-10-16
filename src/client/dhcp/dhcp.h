@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <pthread.h> 
-#include "../structs/client_structs.h"
+#include "../structs/structs.h"
 
 // Función para obtener el tipo de mensaje DHCP
 int get_dhcp_message_type(struct dhcp_message *msg);
@@ -15,6 +15,8 @@ void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype,
 void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, 
                       uint8_t option_value);
 
+// Función para configurar la dirección IP solicitada en las opciones del mensaje DHCP
 void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip);
 
+// Función para configurar el identificador del servidor en las opciones del mensaje DHCP
 void set_server_identifier(uint8_t *options, int *index, uint32_t server_identifier);
