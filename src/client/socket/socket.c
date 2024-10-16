@@ -7,9 +7,6 @@ int initialize_DGRAM_socket(struct sockaddr_in *client_addr, socklen_t client_le
     // Definimos variable para habilitar la opición de broadcast en el socket.
     int broadcast_enable = 1;
 
-    // Definimos variable para habilitar la opción de reutilizar la dirección IP y puerto del socket.
-    int opt = 1;
-
     // Asignamos a la variable el socket correspondiente IPv4 (familia de direcciones del socket), UDP (tipo del socket), y este utiliza el mismo protocolo del tipo del socket. Nos da el Id del socket que creamos.
     fd = socket(AF_INET,SOCK_DGRAM,0); 
 
@@ -17,13 +14,6 @@ int initialize_DGRAM_socket(struct sockaddr_in *client_addr, socklen_t client_le
     if(fd<0){
          error("No se pudo crear el socket");
          exit(EXIT_FAILURE);
-    }
-
-    // Permitir que otros sockets puedan usar la misma IP y puerto
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        perror("Error al establecer SO_REUSEADDR");
-        close(fd);
-        exit(EXIT_FAILURE);
     }
 
     // Habilitamos la opción de broadcast en el socket
