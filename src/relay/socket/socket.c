@@ -16,7 +16,7 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
          exit(EXIT_FAILURE);
     }
 
-    // Habilitar la opción de broadcast en el socket
+    // Habilitar la opción de broadcast en el socket.
     int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
     if (ret < 0) {
         error("Error habilitando la opción de broadcast");
@@ -84,6 +84,7 @@ int send_message(int fd, const char *buffer, int message_len, struct sockaddr_in
             exit(EXIT_FAILURE);
         }
     }
+    // Enviamos el mensaje a través del socket.
     if (sendto(fd, buffer, message_len, 0, (struct sockaddr *)actor_addr, actor_len) < 0) {
         error("Error al reenviar DHCPOFFER al cliente");
         return -1;

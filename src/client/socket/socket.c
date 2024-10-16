@@ -16,7 +16,7 @@ int initialize_DGRAM_socket(struct sockaddr_in *client_addr, socklen_t client_le
          exit(EXIT_FAILURE);
     }
 
-    // Habilitamos la opción de broadcast en el socket
+    // Habilitamos la opción de broadcast en el socket.
     int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
     if (ret < 0) {
         perror("Error habilitando la opción de broadcast");

@@ -54,7 +54,7 @@ struct dhcp_message* process_msg(char *buffer) {
             if (dest_port == 1068 && src_port == 1067) {
                 printf("Mensaje UDP broadcast recibido en el puerto 1068\n");
 
-                // Obtenemos los datos del mensaje (payload)
+                // Obtenemos los datos del mensaje (payload).
                 char *data = get_udp_payload(buffer, ip_header, udp_header);
 
                 // Mapeamos el payload como una estructura de mensaje DHCP.
@@ -67,7 +67,7 @@ struct dhcp_message* process_msg(char *buffer) {
     return NULL;
 }
 
-// Función para imprimir la configuración de red
+// Función para imprimir la configuración de red.
 void print_network_config(struct dhcp_message *msg) {
     int i = 0;
     struct in_addr addr;
@@ -80,13 +80,13 @@ void print_network_config(struct dhcp_message *msg) {
         uint8_t option = msg->options[i];
         uint8_t len = msg->options[i + 1];
 
-        if (option == 1) {  // Opción máscara de red
+        if (option == 1) {  // Opción máscara de red.
             memcpy(&addr, &msg->options[i + 2], 4);
             printf("Máscara de red: %s\n", inet_ntoa(addr));
-        } else if (option == 3) {  // Opción gateway predeterminado
+        } else if (option == 3) {  // Opción gateway predeterminado.
             memcpy(&addr, &msg->options[i + 2], 4);
             printf("Gateway: %s\n", inet_ntoa(addr));
-        } else if (option == 6) {  // Opción servidor DNS
+        } else if (option == 6) {  // Opción servidor DNS.
             memcpy(&addr, &msg->options[i + 2], 4);
             printf("Servidor DNS: %s\n", inet_ntoa(addr));
         }
@@ -100,7 +100,7 @@ void print_network_config(struct dhcp_message *msg) {
     }
 }
 
-// Función para obtener la dirección MAC y retornarla como un puntero
+// Función para obtener la dirección MAC y retornarla como un puntero.
 uint8_t *get_mac_address(const char *interface) {
 
     // Definición de variable que va a almacenar el ID del socket.
@@ -119,21 +119,21 @@ uint8_t *get_mac_address(const char *interface) {
         return NULL;
     }
 
-    // Copiamos el nombre de la interfaz a la estructura ifreq
+    // Copiamos el nombre de la interfaz a la estructura ifreq.
     strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
 
-    // Hacemos la solicitud ioctl para obtener la dirección MAC
+    // Hacemos la solicitud ioctl para obtener la dirección MAC.
     if (ioctl(client_socket, SIOCGIFHWADDR, &ifr) == -1) {
         perror("Error al obtener dirección MAC");
         close(client_socket);
         return NULL;
     }
 
-    // Copiamos la dirección MAC obtenida a la variable estática
+    // Copiamos la dirección MAC obtenida a la variable estática.
     memcpy(mac, ifr.ifr_hwaddr.sa_data, 6);
 
     close(client_socket);
-    return mac;  // Retornar el puntero a la dirección MAC
+    return mac;  // Retornar el puntero a la dirección MAC.
 }
 
 // Funciones para obtener el identificador del servidor.
@@ -165,7 +165,7 @@ uint32_t get_server_identifier(struct dhcp_message *msg) {
     return server_ip;
 }
 
-// Función para asignar una dirección IP a una interfaz
+// Función para asignar una dirección IP a una interfaz.
 void assign_ip_to_interface(const char *interface, struct dhcp_message *msg) { 
 
     // Definimos la variable que va a almacenar el comando a ejecutar.
@@ -180,7 +180,7 @@ void assign_ip_to_interface(const char *interface, struct dhcp_message *msg) {
     // Extraemos la IP asignada desde el campo yiaddr del mensaje DHCPACK.
     ip_addr.s_addr = msg->yiaddr;
 
-    // Asignamos la nueva dirección IP con el prefijo quemado,
+    // Asignamos la nueva dirección IP con el prefijo quemado.
     snprintf(command, sizeof(command), "sudo ip addr add %s/%s dev %s", inet_ntoa(ip_addr), subnet_prefix, interface);
     system(command);
 

@@ -1,6 +1,6 @@
 #include "dhcp.h"
 
-// Función para obtener el tipo de mensaje DHCP
+// Función para obtener el tipo de mensaje DHCP.
 int get_dhcp_message_type(struct dhcp_message *msg) {
     // Definimos la variable de control para recorrer el campo de options.
     int i = 0;
@@ -15,7 +15,7 @@ int get_dhcp_message_type(struct dhcp_message *msg) {
     return -1;  
 }
 
-// Función para configurar el mensaje DHCP
+// Función para configurar el mensaje DHCP.
 void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype, uint8_t hlen, 
                             uint32_t xid, uint16_t flags, uint8_t *chaddr) {
     // Inicializamos el mensaje DHCP con ceros.
@@ -32,7 +32,7 @@ void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype,
     memcpy(msg->chaddr, chaddr, 6);  // Solo los primeros 6 bytes de la MAC se copian.
 }
 
-// Función para configurar el tipo de mensaje en las opciones del mensaje DHCP
+// Función para configurar el tipo de mensaje en las opciones del mensaje DHCP.
 void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, 
                       uint8_t option_value) {
     // Configuramos el tipo de mensaje en las opciones del mensaje DHCP en el índice especificado.
@@ -48,7 +48,7 @@ void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t
     *index += 3; 
 }
 
-// Función para configurar la dirección IP solicitada en las opciones del mensaje DHCP
+// Función para configurar la dirección IP solicitada en las opciones del mensaje DHCP.
 void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip) {
     // Configuramos la opción de la IP solicitada en las opciones del mensaje DHCP en el índice especificado.
     options[*index] = 50;  // Opción 50 es la IP solicitada.
@@ -60,7 +60,7 @@ void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip) {
     *index += 6; 
 }
 
-// Función para configurar la dirección IP del servidor en las opciones del mensaje DHCP
+// Función para configurar la dirección IP del servidor en las opciones del mensaje DHCP.
 void set_server_identifier(uint8_t *options, int *index, uint32_t server_identifier) {
     // Configuramos la opción de la dirección IP del servidor en las opciones del mensaje DHCP en el índice especificado.
     options[*index] = 54;  // Opción 54 es la dirección IP del servidor.
