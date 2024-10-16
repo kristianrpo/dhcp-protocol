@@ -245,7 +245,7 @@ void send_dhcp_offer(int fd, struct sockaddr_in *relay_addr, socklen_t relay_len
     // Definimos la dirección MAC del cliente en la estructura del mensaje.
     configure_dhcp_message(&offer_msg, 2, discover_msg->htype, discover_msg->hlen, discover_msg->xid, htonl(reserved_ip), discover_msg->chaddr);
 
-     // Índice para comenzar a llenar las opciones
+    // Índice para comenzar a llenar las opciones
     int index = 0;
 
     // Llamamos a la función que configura el tipo de mensaje, 53 es el tipo de opción, 1 es la longitud, 2 es el valor para DHCPOFFER.
