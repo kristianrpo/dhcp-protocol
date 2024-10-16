@@ -4,17 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include <net/if.h>
-#include <sys/ioctl.h>
-#include <net/ethernet.h>
-#include <netinet/udp.h> 
 #include <netinet/ip.h>  
+#include <netinet/udp.h> 
+#include <net/if.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
-
+#include <unistd.h>
+#include <net/ethernet.h>
 
 #include "../error/error.h"
 #include "../structs/structs.h"

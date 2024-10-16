@@ -1,7 +1,7 @@
+#ifndef DHCP_H
+#define DHCP_H
 #include <string.h> 
 #include <stdint.h>
-#include <arpa/inet.h>
-#include <pthread.h> 
 #include "../structs/structs.h"
 
 // Función para obtener el tipo de mensaje DHCP
@@ -20,3 +20,5 @@ void set_requested_ip(uint8_t *options, int *index, uint32_t requested_ip);
 
 // Función para configurar el identificador del servidor en las opciones del mensaje DHCP
 void set_server_identifier(uint8_t *options, int *index, uint32_t server_identifier);
+
+#endif

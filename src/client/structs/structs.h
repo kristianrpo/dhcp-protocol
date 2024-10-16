@@ -2,8 +2,6 @@
 #define STRUCTS_H
 
 #include <stdint.h>
-#include <time.h>
-#include <netinet/in.h>
 #include "../constants/constants.h" 
 
 struct dhcp_message {
