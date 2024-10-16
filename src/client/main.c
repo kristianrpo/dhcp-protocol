@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include "socket/socket.h"  
@@ -75,11 +74,9 @@ int main() {
     relay_addr.sin_addr.s_addr = inet_addr(BROADCAST_IP);
 
 
-    // Enviamos el mensaje de broadcast al puerto del relay.
-    if (sendto(send_socket, &discover_msg, sizeof(discover_msg), 0, (struct sockaddr*)&relay_addr, relay_len) < 0) {
-        error("Error al enviar mensaje");
-        close(send_socket);
-        exit(EXIT_FAILURE);
+    // Enviamos el mensaje como broadcast al puerto 1067.
+    if (send_message(send_socket, &discover_msg, &relay_addr, relay_len) < 0) {
+        exit(EXIT_FAILURE);  
     }
 
     printf("Mensaje de broadcast enviado al puerto %d desde la interfaz enp0s3\n",DHCP_RELAY_PORT);
@@ -152,11 +149,9 @@ int main() {
     // Definimos que se le mandará el mensaje de broadcast al puerto del relay.
     relay_addr.sin_addr.s_addr = inet_addr(BROADCAST_IP);
 
-    // Enviamos el mensaje de broadcast al puerto del relay.
-    if (sendto(send_socket, &request_msg, sizeof(request_msg), 0, (struct sockaddr*)&relay_addr, relay_len) < 0) {
-        perror("Error al enviar mensaje");
-        close(send_socket);
-        exit(EXIT_FAILURE);
+    // Enviamos el mensaje como broadcast al puerto 1067.
+    if (send_message(send_socket, &request_msg, &relay_addr, relay_len) < 0) {
+        exit(EXIT_FAILURE);  
     }
 
     printf("Mensaje de broadcast enviado al puerto %d desde la interfaz enp0s3\n",DHCP_RELAY_PORT);

@@ -26,4 +26,6 @@ int initialize_RAW_socket(struct sockaddr_in *client_addr, socklen_t client_len)
 // Función para recibir un mensaje del socket.
 ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, socklen_t *relay_len);
 
+// Función para enviar un mensaje a través del socket.
+int send_message(int fd, struct dhcp_message *msg, struct sockaddr_in *relay_addr, socklen_t relay_len);
 #endif

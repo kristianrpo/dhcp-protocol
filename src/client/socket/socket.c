@@ -79,3 +79,14 @@ ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, so
 
     return msg_len;
 }
+
+// Función para enviar un mensaje a través del socket.
+int send_message(int fd, struct dhcp_message *msg, struct sockaddr_in *relay_addr, socklen_t relay_len) {
+    // Enviamos el mensaje de broadcast al puerto del relay.
+    if (sendto(fd, msg, sizeof(struct dhcp_message), 0, (struct sockaddr *)relay_addr, relay_len) < 0) {
+        perror("Error al enviar mensaje");
+        close(fd);
+        return -1;
+    }
+    return 0;
+}
