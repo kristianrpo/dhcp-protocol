@@ -1,7 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-// Definimos el puerto del cliente DHCP. Este es el puerto donde el cliente espera y envia mensajes de respuesta DHCP.
+// Definimos el puerto del cliente DHCP. Este es el puerto donde el cliente espera y envia mensajes DHCP.
 #define DHCP_CLIENT_PORT 1068
 
 // Definimos el puerto del relay DHCP. Este es el puerto donde el relay envía y recibe mensajes de broadcast.

@@ -1,5 +1,7 @@
 #include "socket.h"
 
+
+// Función para inicializar el socket.
 int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     // Definición de variable que va a almacenar el socker.
     int fd;
@@ -17,7 +19,7 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     // Habilitar la opción de broadcast en el socket
     int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
     if (ret < 0) {
-        perror("Error habilitando la opción de broadcast");
+        error("Error habilitando la opción de broadcast");
         close(fd);
         exit(EXIT_FAILURE);
     }
@@ -47,11 +49,11 @@ int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
 }
 
 // Función para recibir un mensaje del socket
-ssize_t receive_message_client(int fd, char *buffer, struct sockaddr_in *client_addr, socklen_t *client_len) {
+ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *actor_addr, socklen_t *actor_len) {
     
     // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente.
     // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer. Además configura la estructura del cliente con la información del cliente que envió el mensaje.
-    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)client_addr, client_len);
+    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)actor_addr, actor_len);
 
     // Comprueba si ocurrió un error durante la recepción del mensaje.
     if (msg_len < 0) {
@@ -60,16 +62,32 @@ ssize_t receive_message_client(int fd, char *buffer, struct sockaddr_in *client_
     return msg_len;
 }
 
-// Función para recibir un mensaje del socket
-ssize_t receive_message_server(int fd, char *buffer, struct sockaddr_in *server_addr, socklen_t *server_len) {
-    
-    // Se almacena el numero de bytes recibidos del datagrama/mensaje correspondiente.
-    // La función recvfrom() recibe información desde el socket correspondiente, especialmente para sockets UDP. Este obtiene el datagrama y lo almacena en el buffer. Además configura la estructura del cliente con la información del cliente que envió el mensaje.
-    ssize_t msg_len = recvfrom(fd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)server_addr, server_len);
-
-    // Comprueba si ocurrió un error durante la recepción del mensaje.
-    if (msg_len < 0) {
-        error("Error al recibir mensaje");
+// Función para enviar un mensaje a través del socket.
+int send_message(int fd, const char *buffer, int message_len, struct sockaddr_in *actor_addr, socklen_t actor_len, int is_client) {
+    struct ifreq ifr;
+    memset(&ifr, 0, sizeof(ifr));
+    if(is_client){
+        // Enlazamos el socket a la interfaz de red relacionada con el cliente.
+        snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), CLIENT_ASSOCIATED_INTERFACE); 
+        if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
+            perror("Error al enlazar a la interfaz");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
     }
-    return msg_len;
+    else{
+        // Enlazamos el socket a la interfaz de red relacionada con el servidor.
+        snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), SERVER_ASSOCIATED_INTERFACE); 
+        if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
+            perror("Error al enlazar a la interfaz");
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
+    }
+    if (sendto(fd, buffer, message_len, 0, (struct sockaddr *)actor_addr, actor_len) < 0) {
+        error("Error al reenviar DHCPOFFER al cliente");
+        return -1;
+    }
+    return 0;
 }
+

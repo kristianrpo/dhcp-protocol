@@ -1,9 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <unistd.h>
 #include "socket/socket.h"  
 #include "constants/constants.h"
 #include "dhcp/dhcp.h"
