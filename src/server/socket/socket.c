@@ -15,13 +15,10 @@ int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
     }
 
     // Configuramos la estructura donde se va a almacenar la ip y el puerto.
-
     // Establecemos que el socket va a almacenar una IPV4.
     server_addr->sin_family = AF_INET;
-
     // Establecemos que el socket va a tener asociado el puerto 1067 para DHCP, usamos htons para tranformar este numero de decimal a bits de red.
     server_addr->sin_port = htons(DHCP_SERVER_PORT);
-
     // Configuramos la dirección IP donde el socket va a estar escuchando conexiones (todas las ip relacionadas a dicho puerto), usamos htonl para convertir al formato adecuado.
     server_addr->sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
 
@@ -50,4 +47,15 @@ ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *relay_addr, so
         error("Error al recibir mensaje");
     }
     return msg_len;
+}
+
+// Función para enviar un mensaje a través del socket.
+int send_message(int fd, struct dhcp_message *msg, struct sockaddr_in *relay_addr, socklen_t relay_len) {
+    // Enviamos el mensaje al relay.
+    if (sendto(fd, msg, sizeof(struct dhcp_message), 0, (struct sockaddr *)relay_addr, relay_len) < 0) {
+        perror("Error al enviar mensaje");
+        close(fd);
+        return -1;
+    }
+    return 0;
 }

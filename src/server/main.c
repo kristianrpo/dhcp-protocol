@@ -1,14 +1,14 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <pthread.h>
 #include "socket/socket.h"
 #include "dhcp/dhcp.h"
-#include "structs/dhcp_structs.h"
-#include "constants/dhcp_constants.h"
+#include "structs/structs.h"
+#include "constants/constants.h"
 #include "error/error.h"
+#include "utils/utils.h"
 int main(){
+    /**************************************************/
+    /*      DEFINICIÓN DE VARIABLES A UTILIZAR        */
+    /**************************************************/
+
     // Definimos un buffer para almacenar los datos recibidos de manera temporal, para así posteriormente procesarlos. 
     char buffer[BUFFER_SIZE]; 
 
@@ -46,6 +46,12 @@ int main(){
     // ya que siempre está listo para recibirlos. A diferencia de TCP, donde es necesario establecer 
     // una conexión con el cliente antes de la comunicación, en UDP no se requiere esta conexión previa.
     printf("Esperando mensajes de clientes DHCP...\n");
+
+    /**************************************************/
+
+    /**************************************************/
+    /*      BUCLE PRINCIPAL SERVIDOR DHCP HILOS       */
+    /**************************************************/
 
     // Utilizamos este bucle para que el servidor DHCP constantemente a la espera de mensajes de los clientes.
     while (1) {
@@ -89,6 +95,8 @@ int main(){
         // Realizamos un detach del hilo, para que se libere la memoria una vez que el hilo termine su ejecución.
         pthread_detach(thread_id);
     }
+
+    /**************************************************/
 
     // Cerramos el socket una vez que el servidor termine su ejecución, para liberar los recursos utilizados.
     close(fd);

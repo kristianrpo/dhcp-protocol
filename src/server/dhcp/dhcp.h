@@ -1,21 +1,18 @@
 #ifndef DHCP_H
 #define DHCP_H
 
-#include <string.h> 
-#include <stdint.h>
-#include <arpa/inet.h>
-#include <pthread.h> 
-#include "../structs/dhcp_structs.h"
+#include <string.h>        // Permite manipular y operar sobre cadenas de caracteres y bloques de memoria (strlen, strcpy, memset, etc.).
+#include <stdint.h>        // Proporciona definiciones de tipos de datos enteros con tamaños específicos (int8_t, uint16_t, int32_t, etc.), garantizando el uso de enteros de un tamaño fijo, independientemente de la arquitectura del sistema.
+#include <arpa/inet.h>     // Proporciona funciones para la manipulación de direcciones IP, como conversión de direcciones entre texto y formato binario (inet_ntoa, inet_addr).
+#include <pthread.h>  // Proporciona las definiciones y funciones necesarias para trabajar con hilos (threads) en programación concurrente utilizando la biblioteca POSIX threads (pthreads). Permite crear, controlar y sincronizar hilos en programas multihilo.
+
+#include "../structs/structs.h"
 #include "../error/error.h"
+#include "../socket/socket.h"
+#include "../utils/utils.h"
 
 // Función para obtener el mensaje DHCP para conocer la opción a realizar.
 int get_dhcp_message_type(struct dhcp_message *msg);
-
-// Función para convertir una IP string (ej: "192.168.0.1") a formato entero binario
-uint32_t ip_to_int(const char *ip);
-
-// Función para convertir una IP en formato binario de vuelta a cadena
-void int_to_ip(uint32_t ip, char *buffer);
 
 // Función para inicializar los valores de memoria de los arrendamientos (en 0) con el fin de evitar y limpiar los espacios que se pretenden ocupar.
 void initialize_leases(struct lease_entry leases[MAX_LEASES]);
@@ -35,10 +32,10 @@ void configure_dhcp_message(struct dhcp_message *msg, uint8_t op, uint8_t htype,
 // Función para configurar el tipo de mensaje en las opciones del mensaje DHCP
 void set_type_message(uint8_t *options, int *index, uint8_t option_type, uint8_t option_length, uint8_t option_value);
 
-// Función para establecer la máscara de subred en el mensaje DHCP
+// Función para establecer la máscara de subred en el mensaje DHCP.
 void set_subnet_mask(uint8_t *options, int *index);
 
-// Función para establecer el gateway en las opciones del mensaje DHCP
+// Función para establecer el gateway en las opciones del mensaje DHCP.
 void set_gateway(uint8_t *options, int *index);
 
 // Función para establecer el servidor DNS en las opciones del mensaje DHCP.

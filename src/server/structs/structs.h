@@ -1,10 +1,11 @@
-#ifndef DHCP_STRUCTS_H
-#define DHCP_STRUCTS_H
+#ifndef STRUCTS_H
+#define STRUCTS_H
 
-#include <stdint.h>
-#include <time.h>
-#include <netinet/in.h>
-#include "../constants/dhcp_constants.h" 
+#include <stdint.h>      // Define tipos de enteros con tamaños específicos (int8_t, uint32_t, etc.), garantizando el uso de enteros de tamaño fijo, independientemente de la arquitectura del sistema. Es útil cuando se necesita trabajar con datos cuyo tamaño debe ser exacto, como en redes o sistemas embebidos.
+#include <time.h>        // Proporciona funciones para la manipulación de fechas y horas, como time(), localtime(), difftime(), y estructuras como struct tm para almacenar fechas y horas de forma estructurada.
+#include <netinet/in.h>  // Proporciona definiciones y estructuras para trabajar con direcciones de red y protocolos de Internet (IPv4 e IPv6), como sockaddr_in, sockaddr_in6 y funciones para la conversión de direcciones y puertos entre formatos.
+
+#include "../constants/constants.h" 
 
 // Estructura para representar un arrendamiento
 struct lease_entry {
@@ -37,8 +38,8 @@ struct dhcp_message {
 // Estructura para los argumentos de los hilos. Esta está diseñada para contener todos los datos que cada hilo necesitará para procesar una solicitud de cliente DHCP.
 struct thread_args {
     int fd;                             // Id del socket.
-    struct sockaddr_in relay_addr;     // Dirección del cliente.
-    socklen_t relay_len;               // Longitud de la dirección del cliente.
+    struct sockaddr_in relay_addr;      // Dirección del cliente.
+    socklen_t relay_len;                // Longitud de la dirección del cliente.
     char buffer[BUFFER_SIZE];           // Buffer que almacena los datos recibidos de manera temporal.
     struct lease_entry *leases;         // Tabla de arrendamientos.
 };
