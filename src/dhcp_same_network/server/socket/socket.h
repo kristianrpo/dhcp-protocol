@@ -9,6 +9,7 @@
 #include <netinet/in.h>      // Proporciona definiciones y estructuras para trabajar con direcciones de red y la familia de protocolos AF_INET (IPv4) y AF_INET6 (IPv6). Incluye estructuras como sockaddr_in y funciones para la conversión de direcciones de red.
 #include <sys/types.h>       // Define tipos de datos básicos usados en las llamadas al sistema, como pid_t, size_t y ssize_t. Estos tipos garantizan portabilidad entre diferentes plataformas.
 #include <unistd.h>          // Define funciones estándar del sistema UNIX como read(), write(), close() y otras relacionadas con el control de procesos y la gestión de archivos.
+#include <net/if.h>          // Contiene definiciones relacionadas con la configuración de interfaces de red, como la estructura ifreq, utilizada con ioctl().
 
 #include "../error/error.h"
 #include "../structs/structs.h"

@@ -4,6 +4,8 @@
 int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
     // Reservamos un espacio en memoria para almacenar el identificador del socket que se va a utilizar
     int fd;
+    int broadcast_enable = 1;
+    struct ifreq ifr;
 
     // Asignamos al espacio un socket de la familia IPv4, de tipo UDP, y que utilice el protocolo del tipo de socket. Almacenamos el identificador del socket creado.
     fd = socket(AF_INET,SOCK_DGRAM,0); 
@@ -14,13 +16,30 @@ int initialize_socket(struct sockaddr_in *server_addr, socklen_t server_len) {
         exit(EXIT_FAILURE);
     }
 
+    // Habilitar la opción de broadcast en el socket.
+    int ret = setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable));
+    if (ret < 0) {
+        error("Error habilitando la opción de broadcast");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    // Enlazamos el socket a la interfaz de red del servidor.
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), SERVER_ASSOCIATED_INTERFACE); 
+    if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, &ifr, sizeof(ifr)) < 0) {
+        perror("Error al enlazar a la interfaz");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+
     // Configuramos la estructura donde se va a almacenar la ip y el puerto.
     // Establecemos que el socket va a almacenar una IPV4.
     server_addr->sin_family = AF_INET;
     // Establecemos que el socket va a tener asociado el puerto 1067 para DHCP, usamos htons para tranformar este numero de decimal a bits de red.
     server_addr->sin_port = htons(DHCP_SERVER_PORT);
     // Configuramos la dirección IP donde el socket va a estar escuchando conexiones (todas las ip relacionadas a dicho puerto), usamos htonl para convertir al formato adecuado.
-    server_addr->sin_addr.s_addr = inet_addr(IP_SERVER_IDENTIFIER); 
+    server_addr->sin_addr.s_addr = INADDR_ANY; 
 
     // Enlazamos el socket a la estructura de red definida y configurada anteriormente a través de la función bind().
     // bind recibe 3 parámetros, el identificador del socket creado, la dirección en memoria de la estructura que contiene la ip y el puerto asociado para el socket que deseamos, y, el tamaño de la estructura que definimos para que se sepa cuanta memoria debe leer.

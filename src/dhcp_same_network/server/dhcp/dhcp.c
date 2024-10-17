@@ -256,6 +256,14 @@ void send_dhcp_offer(int fd, struct sockaddr_in *client_addr, socklen_t client_l
 
     // Definimos el campo que especifica que se llegó al final de las opciones.
     offer_msg.options[index+6] = 255; 
+
+    // Definimos los datos necesarios para enviar el mensaje de broadcast al cliente.
+    // Definimos la dirección IP del cliente.
+    client_addr->sin_family = AF_INET;
+    // Configuración del puerto del cliente.
+    client_addr->sin_port = htons(DHCP_CLIENT_PORT);
+    // Definimos que se le mandará el mensaje de broadcast al puerto del cliente.
+    client_addr->sin_addr.s_addr = inet_addr(BROADCAST_IP);
     
     // Utilizamos la función para mandar el mensaje al cliente, funcionando de manera practicamente igual que al recibir el mensaje por parte del cliente.
     if (send_message(fd, &offer_msg, client_addr, client_len) < 0) {
@@ -291,7 +299,15 @@ void send_dhcp_nak(int fd, struct sockaddr_in *client_addr, socklen_t client_len
     set_server_identifier(nak_msg.options, &index);
     
     // Establecemos el fin de las opciones.
-    nak_msg.options[index] = 255; 
+    nak_msg.options[index] = 255;
+
+    // Definimos los datos necesarios para enviar el mensaje de broadcast al cliente.
+    // Definimos la dirección IP del cliente.
+    client_addr->sin_family = AF_INET;
+    // Configuración del puerto del cliente.
+    client_addr->sin_port = htons(DHCP_CLIENT_PORT);
+    // Definimos que se le mandará el mensaje de broadcast al puerto del cliente.
+    client_addr->sin_addr.s_addr = inet_addr(BROADCAST_IP);
 
     // Enviamos el mensaje DHCPNAK.
     if (send_message(fd, &nak_msg, client_addr, client_len) < 0) {
@@ -381,6 +397,14 @@ void send_dhcp_ack(int fd, struct sockaddr_in *client_addr, socklen_t client_len
 
         // Establecemos el fin de las opciones.
         ack_msg.options[index] = 255; 
+
+        // Definimos los datos necesarios para enviar el mensaje de broadcast al cliente.
+        // Definimos la dirección IP del cliente.
+        client_addr->sin_family = AF_INET;
+        // Configuración del puerto del cliente.
+        client_addr->sin_port = htons(DHCP_CLIENT_PORT);
+        // Definimos que se le mandará el mensaje de broadcast al puerto del cliente.
+        client_addr->sin_addr.s_addr = inet_addr(BROADCAST_IP);
 
         // Enviamos el mensaje DHCPACK.
         if (send_message(fd, &ack_msg, client_addr, client_len) < 0) {
