@@ -2,6 +2,82 @@
 #include "constants/constants.h"
 #include "dhcp/dhcp.h"
 #include "utils/utils.h"
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>  // Para sleep()
+#include <termios.h>
+#include <fcntl.h>
+
+// Function prototypes
+void release_ip();
+void print_network_interface();
+
+// Crear la estructura para pasar al hilo de salida
+struct exit_args {
+    struct dhcp_message *ack_msg;  // Puntero al mensaje DHCP ACK
+    const char *interface;         // Nombre de la interfaz
+};
+
+int kbhit(void) {
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
+
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    if(ch != EOF) {
+        ungetc(ch, stdin);
+        return 1;
+    }
+
+    return 0;
+}
+// Function to release the IP address from the network interface
+void release_ip(const char *interface, struct dhcp_message *msg) {
+    char command[256];
+    struct in_addr addr;
+    addr.s_addr = msg->yiaddr;
+
+    snprintf(command, sizeof(command), "sudo ip addr del %s/24 dev %s", inet_ntoa(addr), interface);
+    system(command);
+
+}
+
+// Function to print the network interface details using `ip addr show`
+void print_network_interface() {
+    printf("Información de la interfaz de red actual:\n");
+    system("ip addr show enp0s3");
+}
+
+// Función para manejar la salida del programa
+void *exit_program(void *arg) {
+    struct exit_args *args = (struct exit_args *)arg;
+    printf("Presionar la tecla Q para finalizar la ejecución del programa y liberar la ip \n");
+    while (1) {
+        if (kbhit()) {
+            char ch = getchar();
+            if (ch == 'q') {
+                printf("\nTecla 'q' presionada. Saliendo del programa...\n");
+                // Liberar la IP antes de salir
+                release_ip(args->interface, args->ack_msg);
+                exit(0);  // Finaliza el programa
+            }
+        }
+        usleep(100000);  // Espera de 100 ms para no consumir muchos recursos
+    }
+    return NULL;
+}
 
 int main() {
     /**************************************************/
@@ -33,6 +109,9 @@ int main() {
 
     // Definimos las estructuras para almacenar los mensajes DHCP OFFER y DHCP ACK.
     struct dhcp_message *offer_msg, *ack_msg;
+
+    // Definimos las estructuras que nos van a permitir crear los hilos para manejar la salida del programa y la renovación del lease en simultaneo
+    pthread_t thread_exit, thread_renew;
 
     /**************************************************/
 
@@ -190,6 +269,24 @@ int main() {
         printf("No se recibió un DHCPACK. Tipo de mensaje recibido: %d\n", ack_type);
     }
 
+    // Capture the SIGINT signal (Ctrl+C)
+
+    // Show the network interface details
+    print_network_interface();
+
+    struct exit_args exit_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE
+    };
+
+
+    // Crear el hilo principal que espera la tecla 'q' para finalizar el programa y liberar la IP.
+    pthread_create(&thread_exit, NULL, exit_program, (void *)&exit_data);
+
+    // Esperar a que ambos hilos terminen
+    pthread_join(thread_exit, NULL);
+
+    
     // Cerramos los sockets.
     close(send_socket);
     close(recv_socket);
