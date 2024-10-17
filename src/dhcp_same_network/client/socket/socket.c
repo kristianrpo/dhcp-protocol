@@ -65,7 +65,6 @@ int initialize_RAW_socket(struct sockaddr_in *client_addr, socklen_t client_len)
 
 // Función para recibir un mensaje del socket.
 ssize_t receive_message(int fd, char *buffer, struct sockaddr_in *server_addr, socklen_t *server_len) {
-    printf("Esperando a recibir mensaje en el socket: %d\n", fd);
 
     // Limpiamos el buffer antes de recibir datos para evitar datos antiguos.
     memset(buffer, 0, BUFFER_SIZE);

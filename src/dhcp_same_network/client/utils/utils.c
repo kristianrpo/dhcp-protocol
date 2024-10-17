@@ -70,9 +70,7 @@ struct dhcp_message* process_msg(char *buffer) {
 // Función para imprimir la configuración de red.
 void print_network_config(struct dhcp_message *msg) {
     int i = 0;
-    struct in_addr addr;
-    printf("Configuración de red recibida:\n");
-    printf("-------------------------------\n");    
+    struct in_addr addr;   
     struct in_addr ip_addr;
     ip_addr.s_addr = msg->yiaddr; 
     printf("Dirección IP: %s\n", inet_ntoa(ip_addr));  

@@ -90,7 +90,6 @@ int main() {
         // Procesamos el mensaje recibido y se verifica si es el mensaje que esperamos o no.
         offer_msg = process_msg(buffer);
         if (offer_msg != NULL) {
-            printf("Mensaje UDP recibido\n");
             break;
         }
     }
@@ -107,7 +106,11 @@ int main() {
     // Verificamos que el mensaje recibido del servidor DHCP sea un DHCPOFFER.
     if (dhcp_type == 2) {
         printf("Mensaje DHCPOFFER recibido correctamente\n");
+        printf("-------------------------------\n");
+        printf("Configuración de red ofrecida: \n");
+        printf("-------------------------------\n"); 
         print_network_config(offer_msg);
+        printf("-------------------------------\n"); 
     } else {
         printf("No se recibió un DHCPOFFER. Tipo de mensaje recibido: %d\n", dhcp_type);
     }
@@ -151,7 +154,7 @@ int main() {
     printf("Mensaje de broadcast enviado al puerto %d desde la interfaz enp0s3\n",DHCP_SERVER_PORT);
 
 
-    printf("Esperando mensaje DHCP ACK UDP en broadcast...\n");
+    printf("Esperando mensaje DHCPACK UDP en broadcast...\n");
 
     // Recibimos mensajes en la interfaz de red hasta obtener el mensaje correspondiente del servidor DHCP.
     while(1) {
@@ -162,7 +165,6 @@ int main() {
         // Procesamos el mensaje recibido y se verifica si es el mensaje que esperamos o no.
         ack_msg = process_msg(buffer);
         if (ack_msg != NULL) {
-            printf("Mensaje UDP recibido\n");
             break;
         }
     }
@@ -173,9 +175,14 @@ int main() {
     // Verificamos que el mensaje recibido del servidor DHCP sea un DHCPACK.
     if (ack_type == 5) {
         printf("Mensaje DHCPACK recibido correctamente\n");
+        printf("-------------------------------\n");
+        printf("Configuración de red recibida: \n");
+        printf("-------------------------------\n"); 
 
         // Imprimimos la configuración de red recibida.
         print_network_config(ack_msg);
+
+        printf("-------------------------------\n"); 
 
         // Asignamos la IP a la interface del cliente.
         assign_ip_to_interface(interface, ack_msg);
