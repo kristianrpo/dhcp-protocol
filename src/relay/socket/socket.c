@@ -1,6 +1,5 @@
 #include "socket.h"
 
-
 // Función para inicializar el socket.
 int initialize_socket(struct sockaddr_in *relay_addr, socklen_t relay_len){
     // Definición de variable que va a almacenar el socker.

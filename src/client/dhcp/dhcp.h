@@ -1,7 +1,9 @@
 #ifndef DHCP_H
 #define DHCP_H
-#include <string.h> 
-#include <stdint.h>
+
+#include <string.h>        // Permite manipular y operar sobre cadenas de caracteres y bloques de memoria (strlen, strcpy, memset, etc.).
+#include <stdint.h>        // Proporciona definiciones de tipos de datos enteros con tamaños específicos (int8_t, uint16_t, int32_t, etc.), garantizando el uso de enteros de un tamaño fijo, independientemente de la arquitectura del sistema.
+
 #include "../structs/structs.h"
 
 // Función para obtener el tipo de mensaje DHCP.

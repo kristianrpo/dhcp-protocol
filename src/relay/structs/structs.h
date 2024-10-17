@@ -1,7 +1,8 @@
 #ifndef STRUCTS_H
 #define STRUCTS_H
 
-#include <stdint.h>
+#include <stdint.h>  // Proporciona definiciones de tipos de datos enteros con tamaños específicos (int8_t, uint16_t, int32_t, etc.), garantizando el uso de enteros de un tamaño fijo, independientemente de la arquitectura del sistema.
+
 #include "../constants/constants.h" 
 
 struct dhcp_message {
