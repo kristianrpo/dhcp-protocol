@@ -2,7 +2,7 @@
 #define STRUCTS_H
 
 #include <stdint.h>        // Proporciona definiciones de tipos de datos enteros con tamaños específicos (int8_t, uint16_t, int32_t, etc.), garantizando el uso de enteros de un tamaño fijo, independientemente de la arquitectura del sistema.
-
+#include <netinet/in.h>    // Proporciona las definiciones de las constantes y estructuras necesarias para trabajar con direcciones de red, como sockaddr_in.
 #include "../constants/constants.h" 
 
 struct dhcp_message {
@@ -21,6 +21,31 @@ struct dhcp_message {
     uint8_t sname[64];      // Nombre del servidor, generalmente no se usa.
     uint8_t file[128];      // Nombre del archivo de arranque que el cliente deberia usar al iniciar, se usa solo cuando los dispositivos necesitan un arranqye remoto o boot desde una imagen de red.
     uint8_t options[312];   // Opciones que personalizan en comportamiento del protocolo, se incluye información como el tipo de mensaje (opción 53), identificador del servidor (opción 54), parametros de red solicitados por el cliente (opción 55), etc.
+};
+
+// Estructura que define los parametros que se le va a pasar a la función que ejecuta el hilo de salida.
+struct exit_args {
+    struct dhcp_message *ack_msg;   // Puntero al mensaje DHCP ACK.
+    char* interface;                // Nombre de la interfaz para liberar la ip una vez se observe que ya pasó su tiempo de arrendamiento y no se hizo una renovación.
+    int send_socket;                // Socket para enviar mensajes de liberación.
+    struct sockaddr_in server_addr; // Dirección del servidor (puerto-broadcast).
+};
+
+// Estructura que define los parametros que se le va a pasar a la función que ejecuta el hilo de renovación.
+struct renew_args {
+    struct dhcp_message *ack_msg;   // Puntero al mensaje DHCP ACK.
+    const char *interface;          // Nombre de la interfaz.
+    int send_socket;                // Socket para enviar mensajes de renovación. 
+    int recv_socket;                // Socket para recibir mensajes de renovación.
+    struct sockaddr_in server_addr; // Dirección del servidor (puerto-broadcast).
+    int *renewed_flag;              // Bandera que indica si se renovó el lease.
+};
+
+// Estructura que define los parametros que se le va a pasar a la función que ejecuta el hilo de monitoreo de si una IP se vence.
+struct monitor_args {
+    struct dhcp_message *ack_msg;   // Puntero al mensaje DHCP ACK.
+    char* interface;                // Nombre de la interfaz para liberar la ip una vez se observe que ya pasó su tiempo de arrendamiento y no se hizo una renovación.
+    int *renewed_flag;              // Bandera que indica si se renovó el lease.
 };
 
 #endif

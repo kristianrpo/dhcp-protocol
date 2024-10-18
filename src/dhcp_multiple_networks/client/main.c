@@ -2,6 +2,11 @@
 #include "constants/constants.h"
 #include "dhcp/dhcp.h"
 #include "utils/utils.h"
+#include "include/shared_resources.h"
+
+// Definir el mutex globalmente
+pthread_mutex_t flag_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 
 int main() {
     /**************************************************/
@@ -22,10 +27,10 @@ int main() {
     socklen_t client_len = sizeof(client_addr);
     socklen_t relay_len = sizeof(relay_addr);
 
-    // Se define la estructura que van a tener los mensajes DHCP.
+    // Definimos la estructura que van a tener los mensajes DHCP.
     struct dhcp_message discover_msg, request_msg;
 
-    // Buffer para almacenar los mensajes.
+    // Definimos para almacenar los mensajes.
     char buffer[BUFFER_SIZE];
 
     // Definimos la estructura para almacenar la longitud del mensaje recibido por parte del servidor.
@@ -33,6 +38,12 @@ int main() {
 
     // Definimos las estructuras para almacenar los mensajes DHCP OFFER y DHCP ACK.
     struct dhcp_message *offer_msg, *ack_msg;
+
+     // Definimos las estructuras que nos van a permitir crear los hilos para manejar la salida del programa y la renovación del lease en simultaneo
+    pthread_t thread_exit, thread_renew, thread_monitor;
+
+    // Inicializamos el flag de renovación
+    int renewed_flag = 0;
 
     /**************************************************/
 
@@ -106,9 +117,6 @@ int main() {
     // Verificamos que el mensaje recibido del servidor DHCP sea un DHCPOFFER.
     if (dhcp_type == 2) {
         printf("Mensaje DHCPOFFER recibido correctamente\n");
-        printf("-------------------------------\n");
-        printf("Configuración de red ofrecida: \n");
-        printf("-------------------------------\n"); 
         print_network_config(offer_msg);
         printf("-------------------------------\n");
     } else {
@@ -174,14 +182,9 @@ int main() {
 
     // Verificamos que el mensaje recibido del servidor DHCP sea un DHCPACK.
     if (ack_type == 5) {
-        printf("Mensaje DHCPACK recibido correctamente\n");
-        printf("-------------------------------\n");
-        printf("Configuración de red recibida: \n");
-        printf("-------------------------------\n"); 
-
+        printf("Mensaje DHCPACK recibido correctamente\n"); 
         // Imprimimos la configuración de red recibida.
         print_network_config(ack_msg);
-
         printf("-------------------------------\n"); 
 
         // Asignamos la IP a la interface del cliente.
@@ -189,6 +192,55 @@ int main() {
     } else {
         printf("No se recibió un DHCPACK. Tipo de mensaje recibido: %d\n", ack_type);
     }
+
+    /**************************************************/
+
+    /********************************************************************************/
+    /*                  RENOVACIÓN IPS Y FINALIZACIÓN DEL PROGRAMA                  */
+    /********************************************************************************/
+
+    // Imprimimos la interfaz del cliente para demostrar que la ip fue definida a la interfaz satisfactoriamente.
+    print_network_interface(INTERFACE);
+
+    // Definimos una estructura que almacenará los parámetros para el hilo de salida.
+    struct exit_args exit_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE,
+        .send_socket = send_socket,
+        .relay_addr = relay_addr,
+    };
+
+    // Definimos una estructura que almacenará los parámetros para el hilo de renovación.
+    struct renew_args renew_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE,
+        .send_socket = send_socket,
+        .recv_socket = recv_socket,
+        .relay_addr = relay_addr,
+        .renewed_flag = &renewed_flag
+    };
+
+    // Definimos una estructura que almacenará los parámetros para el hilo de monitoreo.
+    struct monitor_args monitor_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE,
+        .renewed_flag = &renewed_flag
+    };
+
+    // Creamos hilos para que en simultaneo que se van haciendo las renovaciones de la ip, se pueda cancelar el programa con la tecla 'q'.
+    // Creamos un hilo que se encargará de renovar el lease de la IP. Este cada que lease time llegue al 70% se renovará (4 veces lo hace).
+    pthread_create(&thread_renew, NULL, lease_renewal, (void *)&renew_data);
+    // Creamos un hilo que espera la tecla 'q' para finalizar el programa y liberar la IP.
+    pthread_create(&thread_exit, NULL, exit_program, (void *)&exit_data);
+    // Creamos un hilo que monitorea si la IP se venció y no se hizo una renovación.
+    pthread_create(&thread_monitor, NULL, monitor_ip, (void *)&monitor_data);
+
+    // Esperamos a que el hilo de renovación termine para que el programa no finalice antes de esto.
+    pthread_join(thread_renew, NULL);
+    // Esperamos a que el hilo de salida termine para que el programa no finalice antes de esto.
+    pthread_join(thread_exit, NULL);
+    // Esperamos a que el hilo de monitoreo termine para que el programa no finalice antes de esto.
+    pthread_join(thread_monitor, NULL);
 
     // Cerramos los sockets.
     close(send_socket);

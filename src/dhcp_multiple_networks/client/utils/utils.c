@@ -71,6 +71,7 @@ struct dhcp_message* process_msg(char *buffer) {
 void print_network_config(struct dhcp_message *msg) {
     int i = 0;
     struct in_addr addr;
+    printf("-------------------------------\n");
     printf("Configuración de red recibida:\n");
     printf("-------------------------------\n");    
     struct in_addr ip_addr;
@@ -187,5 +188,164 @@ void assign_ip_to_interface(const char *interface, struct dhcp_message *msg) {
     // Activamos la interfaz.
     snprintf(command, sizeof(command), "sudo ip link set dev %s up", interface);
     system(command);
+}
+
+
+// Función para leer la entrada del teclado.
+int kbhit(void) {
+    struct termios oldt, newt;   // Estructuras para almacenar la configuración actual y la nueva del terminal.
+    int ch;                      // Variable para almacenar el carácter de entrada.
+    int oldf;                    // Variable para almacenar las flags del archivo (descriptor de archivo).
+
+    // Obtiene la configuración actual del terminal (entrada estándar).
+    tcgetattr(STDIN_FILENO, &oldt);
+    
+    // Copia la configuración actual a una nueva para modificarla.
+    newt = oldt;
+    
+    // Desactiva el modo canónico (entrada de línea completa) y el eco de caracteres.
+    newt.c_lflag &= ~(ICANON | ECHO);
+    
+    // Aplica la nueva configuración de forma inmediata.
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    
+    // Obtiene las flags actuales del descriptor de archivo para la entrada estándar.
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    
+    // Establece la entrada estándar en modo no bloqueante.
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    // Lee un carácter de la entrada estándar.
+    ch = getchar();
+
+    // Restaura la configuración original del terminal.
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    
+    // Restaura las flags originales del descriptor de archivo.
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    // Si se ha leído un carácter (diferente de EOF).
+    if(ch != EOF) {
+        // Devuelve el carácter al flujo de entrada estándar.
+        ungetc(ch, stdin);
+        // Retorna 1 para indicar que se presionó una tecla.
+        return 1;
+    }
+
+    // Retorna 0 si no se presionó ninguna tecla.
+    return 0;
+}
+
+// Función para imprimir la información de la interfaz de red, demosntrando que la IP fue asignada satisfactoriamente.
+void print_network_interface(const char *interface) {
+    // Creamos un buffer para almacenar el comando con la interfaz
+    char command[256];
+    
+    // Construir el comando con el nombre de la interfaz proporcionada
+    snprintf(command, sizeof(command), "ip addr show %s", interface);
+    
+    // Imprimir la información de la interfaz de red
+    printf("Información de la interfaz de red actual (%s):\n", interface);
+    
+    // Ejecutar el comando
+    system(command);
+}
+
+// Función para liberar la ip cuando finaliza el programa o cuando la renovación del arrendamiento no es exitoso.
+void release_ip(const char *interface, struct dhcp_message *msg) {
+    // Creamos un buffer para almacenar el comando con la interfaz
+    char command[256];
+
+    // Definimos la estructura que va a almacenar la diracción ip a liberar.
+    struct in_addr addr;
+
+    // Almacenamos en la estructura la ip del cliente que se va a liberar.
+    addr.s_addr = msg->yiaddr;
+
+    // Almacenamos en el buffer el comando construido.
+    snprintf(command, sizeof(command), "sudo ip addr del %s/24 dev %s", inet_ntoa(addr), interface);
+
+    // Realizamos el comando.
+    system(command);
+
+}
+
+// Función para manejar la salida del programa.
+void *exit_program(void *arg) {
+    // 
+    struct exit_args *args = (struct exit_args *)arg;
+
+    socklen_t relay_len = sizeof(args->relay_addr);
+
+    // Esperamos a recibir el input del teclado.
+    while (1) {
+        if (kbhit()) {
+            // Obtenemos la tecla precionada.
+            char ch = getchar();
+
+            // Si es la 'q', liberamos ip y salimos del programa.
+            if (ch == 'q') {
+                printf("\nTecla 'q' presionada. Saliendo del programa y liberando ip...\n");
+
+                // Liberamos la IP antes de salir.
+                release_ip(args->interface, args->ack_msg);
+
+                // Enviamos el mensaje DHCPRELEASE para liberar la IP
+                send_dhcp_release(args->send_socket, 
+                              args->ack_msg->yiaddr, 
+                              get_server_identifier(args->ack_msg), 
+                              args->ack_msg->xid, 
+                              args->ack_msg->chaddr, 
+                              &args->relay_addr, 
+                              relay_len);
+
+                // Finalizamos el programa.
+                exit(0);
+            }
+        }
+        // Realizamos comprobación de si se presionó una tecla cada 100 ms.
+        usleep(100000);
+    }
+    return NULL;
+}
+
+// Función para monitorear si la ip del cliente se vence para liberarla.
+void *monitor_ip(void *arg) {
+    // Definimos la estructura que almacena los argumentos.
+    struct monitor_args *args = (struct monitor_args *)arg;
+
+    // Obtenemos el tiempo de arrendamiento de la IP.
+    int lease_time = get_lease_time(args->ack_msg);
+
+    // Definimos el tiempo transcurrido.
+    int time = 0;
+
+    while(1){
+        // Esperamos 1 segundo en cada ciclo.
+        sleep(1);
+        time++;
+
+        // Bloqueamos el mutex antes de esperar la señal.
+        pthread_mutex_lock(&flag_mutex);
+
+        // Definimos un tiempo absoluto de espera basado en el tiempo actual.
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += lease_time;  // Sumamos el tiempo de arrendamiento en segundos.
+
+        // Esperamos hasta recibir una señal de renovación o hasta que se agote el tiempo.
+        int rc = pthread_cond_timedwait(&cond_var, &flag_mutex, &ts);
+
+        // Si recibimos la señal de renovación (rc == 0).
+        if (rc == 0) {
+            time = 0;
+        } else{
+            printf("El tiempo de arrendamiento de la IP ha vencido. La IP se va a liberar. Vuelva a iniciar el proceso para obtener una nueva IP\n");
+            release_ip(args->interface, args->ack_msg);
+            exit(0);
+        } 
+        pthread_mutex_unlock(&flag_mutex);
+    }
+    return NULL;
 }
 

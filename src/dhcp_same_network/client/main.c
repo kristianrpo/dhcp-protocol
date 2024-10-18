@@ -2,82 +2,11 @@
 #include "constants/constants.h"
 #include "dhcp/dhcp.h"
 #include "utils/utils.h"
-#include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>  // Para sleep()
-#include <termios.h>
-#include <fcntl.h>
+#include "include/shared_resources.h"
 
-// Function prototypes
-void release_ip();
-void print_network_interface();
-
-// Crear la estructura para pasar al hilo de salida
-struct exit_args {
-    struct dhcp_message *ack_msg;  // Puntero al mensaje DHCP ACK
-    const char *interface;         // Nombre de la interfaz
-};
-
-int kbhit(void) {
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-    ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-    if(ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
-
-    return 0;
-}
-// Function to release the IP address from the network interface
-void release_ip(const char *interface, struct dhcp_message *msg) {
-    char command[256];
-    struct in_addr addr;
-    addr.s_addr = msg->yiaddr;
-
-    snprintf(command, sizeof(command), "sudo ip addr del %s/24 dev %s", inet_ntoa(addr), interface);
-    system(command);
-
-}
-
-// Function to print the network interface details using `ip addr show`
-void print_network_interface() {
-    printf("Información de la interfaz de red actual:\n");
-    system("ip addr show enp0s3");
-}
-
-// Función para manejar la salida del programa
-void *exit_program(void *arg) {
-    struct exit_args *args = (struct exit_args *)arg;
-    printf("Presionar la tecla Q para finalizar la ejecución del programa y liberar la ip \n");
-    while (1) {
-        if (kbhit()) {
-            char ch = getchar();
-            if (ch == 'q') {
-                printf("\nTecla 'q' presionada. Saliendo del programa...\n");
-                // Liberar la IP antes de salir
-                release_ip(args->interface, args->ack_msg);
-                exit(0);  // Finaliza el programa
-            }
-        }
-        usleep(100000);  // Espera de 100 ms para no consumir muchos recursos
-    }
-    return NULL;
-}
+// Definir el mutex globalmente
+pthread_mutex_t flag_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_var = PTHREAD_COND_INITIALIZER;
 
 int main() {
     /**************************************************/
@@ -98,10 +27,10 @@ int main() {
     socklen_t client_len = sizeof(client_addr);
     socklen_t server_len = sizeof(server_addr);
 
-    // Se define la estructura que van a tener los mensajes DHCP.
+    // Definimos la estructura que van a tener los mensajes DHCP.
     struct dhcp_message discover_msg, request_msg;
 
-    // Buffer para almacenar los mensajes.
+    // Definimos para almacenar los mensajes.
     char buffer[BUFFER_SIZE];
 
     // Definimos la estructura para almacenar la longitud del mensaje recibido por parte del servidor.
@@ -111,7 +40,10 @@ int main() {
     struct dhcp_message *offer_msg, *ack_msg;
 
     // Definimos las estructuras que nos van a permitir crear los hilos para manejar la salida del programa y la renovación del lease en simultaneo
-    pthread_t thread_exit, thread_renew;
+    pthread_t thread_exit, thread_renew, thread_monitor;
+
+    // Inicializamos el flag de renovación
+    int renewed_flag = 0;
 
     /**************************************************/
 
@@ -269,24 +201,55 @@ int main() {
         printf("No se recibió un DHCPACK. Tipo de mensaje recibido: %d\n", ack_type);
     }
 
-    // Capture the SIGINT signal (Ctrl+C)
+    /**************************************************/
 
-    // Show the network interface details
-    print_network_interface();
+    /********************************************************************************/
+    /*                  RENOVACIÓN IPS Y FINALIZACIÓN DEL PROGRAMA                  */
+    /********************************************************************************/
 
+    // Imprimimos la interfaz del cliente para demostrar que la ip fue definida a la interfaz satisfactoriamente.
+    print_network_interface(INTERFACE);
+
+    // Definimos una estructura que almacenará los parámetros para el hilo de salida.
     struct exit_args exit_data = {
         .ack_msg = ack_msg,
-        .interface = INTERFACE
+        .interface = INTERFACE,
+        .send_socket = send_socket,
+        .server_addr = server_addr,
     };
 
+    // Definimos una estructura que almacenará los parámetros para el hilo de renovación.
+    struct renew_args renew_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE,
+        .send_socket = send_socket,
+        .recv_socket = recv_socket,
+        .server_addr = server_addr,
+        .renewed_flag = &renewed_flag
+    };
 
-    // Crear el hilo principal que espera la tecla 'q' para finalizar el programa y liberar la IP.
+    // Definimos una estructura que almacenará los parámetros para el hilo de monitoreo.
+    struct monitor_args monitor_data = {
+        .ack_msg = ack_msg,
+        .interface = INTERFACE,
+        .renewed_flag = &renewed_flag
+    };
+
+    // Creamos hilos para que en simultaneo que se van haciendo las renovaciones de la ip, se pueda cancelar el programa con la tecla 'q'.
+    // Creamos un hilo que se encargará de renovar el lease de la IP. Este cada que lease time llegue al 70% se renovará (4 veces lo hace).
+    pthread_create(&thread_renew, NULL, lease_renewal, (void *)&renew_data);
+    // Creamos un hilo que espera la tecla 'q' para finalizar el programa y liberar la IP.
     pthread_create(&thread_exit, NULL, exit_program, (void *)&exit_data);
+    // Creamos un hilo que monitorea si la IP se venció y no se hizo una renovación.
+    pthread_create(&thread_monitor, NULL, monitor_ip, (void *)&monitor_data);
 
-    // Esperar a que ambos hilos terminen
+    // Esperamos a que el hilo de renovación termine para que el programa no finalice antes de esto.
+    pthread_join(thread_renew, NULL);
+    // Esperamos a que el hilo de salida termine para que el programa no finalice antes de esto.
     pthread_join(thread_exit, NULL);
+    // Esperamos a que el hilo de monitoreo termine para que el programa no finalice antes de esto.
+    pthread_join(thread_monitor, NULL);
 
-    
     // Cerramos los sockets.
     close(send_socket);
     close(recv_socket);

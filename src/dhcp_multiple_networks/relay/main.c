@@ -46,6 +46,9 @@ int main() {
         else if (dhcp_type == 3) {
             printf("DHCPREQUEST recibido del cliente.\n");
         }
+        else if (dhcp_type == 7) {
+            printf("DHCPRELEASE recibido del cliente.\n");
+        }
 
         // Asignamos la IP del relay en el campo correspondiente del mensaje DHCP.
         msg->giaddr = relay_addr.sin_addr.s_addr;
@@ -68,6 +71,9 @@ int main() {
         }
         else if (dhcp_type == 3) {
             printf("Reenviando DHCPREQUEST al servidor...\n");
+        }
+        else if (dhcp_type == 7) {
+            printf("Reenviando DHCPRELEASE al servidor...\n");
         }
 
         // Enviamos el mensaje al servidor.

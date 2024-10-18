@@ -17,7 +17,7 @@
 #define LEASE_DURATION_RESERVED 10
 
 // Duración de un arrendamiento cuando se asigna a un cliente en segundos.
-#define LEASE_DURATION_OCCUPIED 3600 
+#define LEASE_DURATION_OCCUPIED 15
 
 // Valor para representar un error.
 #define IP_ERROR 0xFFFFFFFF

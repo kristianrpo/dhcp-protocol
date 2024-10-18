@@ -13,10 +13,15 @@
 #include <sys/ioctl.h>     // Proporciona funciones para manipular parámetros de dispositivos de E/S, como configurar propiedades de interfaces de red (ioctl).
 #include <unistd.h>        // Define funciones estándar del sistema UNIX como read(), write(), close() y otras relacionadas con el control de procesos y la gestión de archivos.
 #include <net/ethernet.h>  // Define estructuras para la manipulación de tramas Ethernet a nivel de enlace de datos, como la estructura ether_header para acceder a la cabecera Ethernet.
+#include <termios.h>       // Para las estructuras y funciones de control de terminal
+#include <unistd.h>        // Para el manejo del descriptor de archivo estándar y funciones como tcgetattr y tcsetattr
+#include <fcntl.h>         // Para manejar las flags del descriptor de archivo (fcntl)
+#include <stdio.h>         // Para getchar y ungetc
 
 #include "../socket/socket.h"  
 #include "../constants/constants.h"
 #include "../dhcp/dhcp.h"
+#include "../include/shared_resources.h"
 
 // Funciones para verificación y obtención de cabeceras y datos.
 int is_ip_packet(struct ethhdr *eth);
@@ -40,5 +45,20 @@ uint32_t get_server_identifier(struct dhcp_message *msg);
 
 // Función para asignar una IP a una interfaz.
 void assign_ip_to_interface(const char *interface, struct dhcp_message *msg);
+
+// Función para leer la entrada del teclado.
+int kbhit(void);
+
+// Función para imprimir la información de la interfaz de red, demosntrando que la IP fue asignada satisfactoriamente.
+void print_network_interface(const char *interface);
+
+// Función para liberar la ip cuando finaliza el programa o cuando la renovación del arrendamiento no es exitoso.
+void release_ip(const char *interface, struct dhcp_message *msg);
+
+// Función para manejar la salida del programa.
+void *exit_program(void *arg);
+
+// Función para monitorear si la ip del cliente se vence para liberarla.
+void *monitor_ip(void *arg);
 
 #endif
