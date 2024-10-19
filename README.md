@@ -4,10 +4,10 @@
 ## Contribuidores
 
 
-- Kristian Restrepo Cárdenas
+- Kristian Restrepo Osorio
 
 
-- Evelyn Alejandra Zapata
+- Evelyn Alejandra Zapata Tobón
 
 
 - Valentina Giraldo Noreña
