@@ -1,5 +1,28 @@
 # DHCP-PROTOCOL
 
+
+## Conocimientos Previos
+
+Para comprender este proyecto, es necesario tener un conocimiento básico de los siguientes conceptos:
+
+### 1. Sockets:
+Un *socket* es una abstracción que permite a las aplicaciones enviar y recibir datos a través de la red. Es la interfaz entre la aplicación y el sistema de red de bajo nivel. En este proyecto, se utilizan sockets tipo *SOCK_DGRAM* (Datagramas) para la implementación de un servidor y un cliente que se comunican mediante el protocolo UDP.
+
+### 2. API de Sockets Berkeley:
+La *API Sockets Berkeley* es una interfaz para la comunicación en red que permite a los desarrolladores gestionar la transmisión de datos entre aplicaciones. Proporciona las herramientas para crear, enlazar, escuchar, enviar y recibir datos a través de sockets, ya sea en el protocolo TCP o UDP.
+
+### 3. Protocolo DHCP:
+El *protocolo DHCP* (Dynamic Host Configuration Protocol) permite la asignación dinámica de direcciones IP a dispositivos en una red. El servidor DHCP asigna una dirección IP a cada dispositivo que lo solicita. Los mensajes clave en este protocolo son:
+- DHCPDISCOVER: El cliente envía este mensaje para buscar servidores DHCP en la red.
+- DHCPOFFER: El servidor responde con una oferta de dirección IP.
+- DHCPREQUEST: El cliente confirma que acepta la IP ofrecida.
+- DHCPACK: El servidor confirma la asignación de la dirección IP al cliente.
+
+### 4. Programación en C y Concurrencia:
+Se deben tener conocimientos básicos de *programación en C, manejo de estructuras, punteros y gestión de memoria. Además, es importante comprender los principios de la **concurrencia* y el uso de *hilos* para manejar múltiples conexiones al servidor DHCP de forma simultánea.
+
+
+
 ## dhcp_multiple_networks
 
 
@@ -153,26 +176,6 @@ Asimismo es importante explicar, el contenido establecido dentro de la carpeta d
 Es indispensable resaltar que dentro de cada archivo contenido en cada carpeta se especifica línea por línea mediante comentarios el funcionamiento del código, ya sea sus métodos, funciones, sockets, uso de puertos y demás funcionalidades implementadas en el proyecto. Por ello, se recomienda darle un vistazo a cada uno de los archivos contenidos en las carpetas del código.
 
 # Implementación del Server DHCP
-
-## Conocimientos Previos
-
-Para comprender este proyecto, es necesario tener un conocimiento básico de los siguientes conceptos:
-
-### 1. Sockets:
-Un *socket* es una abstracción que permite a las aplicaciones enviar y recibir datos a través de la red. Es la interfaz entre la aplicación y el sistema de red de bajo nivel. En este proyecto, se utilizan sockets tipo *SOCK_DGRAM* (Datagramas) para la implementación de un servidor y un cliente que se comunican mediante el protocolo UDP.
-
-### 2. API de Sockets Berkeley:
-La *API Sockets Berkeley* es una interfaz para la comunicación en red que permite a los desarrolladores gestionar la transmisión de datos entre aplicaciones. Proporciona las herramientas para crear, enlazar, escuchar, enviar y recibir datos a través de sockets, ya sea en el protocolo TCP o UDP.
-
-### 3. Protocolo DHCP:
-El *protocolo DHCP* (Dynamic Host Configuration Protocol) permite la asignación dinámica de direcciones IP a dispositivos en una red. El servidor DHCP asigna una dirección IP a cada dispositivo que lo solicita. Los mensajes clave en este protocolo son:
-- DHCPDISCOVER: El cliente envía este mensaje para buscar servidores DHCP en la red.
-- DHCPOFFER: El servidor responde con una oferta de dirección IP.
-- DHCPREQUEST: El cliente confirma que acepta la IP ofrecida.
-- DHCPACK: El servidor confirma la asignación de la dirección IP al cliente.
-
-### 4. Programación en C y Concurrencia:
-Se deben tener conocimientos básicos de *programación en C, manejo de estructuras, punteros y gestión de memoria. Además, es importante comprender los principios de la **concurrencia* y el uso de *hilos* para manejar múltiples conexiones al servidor DHCP de forma simultánea.
 
 ## Desarrollo
 
