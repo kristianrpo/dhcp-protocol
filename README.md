@@ -1,5 +1,8 @@
 <h1 align="center"> DHCP-PROTOCOL</h1>
-
+## Contribuidores
+Kristian Restrepo Cárdenas
+Evelyn Alejandra Zapata
+Valentina Giraldo Noreña
 
 ## Conocimientos Previos
 
