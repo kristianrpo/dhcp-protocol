@@ -159,6 +159,159 @@ El programa iniciará el proceso DHCP DISCOVER para obtener una dirección IP pa
 
 
 
+# Proyecto Relay DHCP
+
+## Descripción del Programa
+
+El proyecto implementa un *relay DHCP* (Dynamic Host Configuration Protocol) diseñado para reenviar mensajes entre clientes y servidores DHCP en diferentes subredes. Un relay DHCP es necesario cuando los clientes y servidores DHCP no están en la misma red física o lógica, lo que impide la comunicación directa. Este relay actúa como intermediario, recibiendo mensajes DHCP de los clientes y reenvíandolos al servidor DHCP, y viceversa.
+
+El programa está diseñado para ser robusto y eficiente, gestionando correctamente las conexiones entre el servidor DHCP y los clientes a través de diferentes interfaces de red. Soporta varias fases del protocolo DHCP, incluyendo *DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, DHCPACK* y *DHCPRELEASE*.
+
+## Dependencias de Configuración
+
+Para ejecutar este proyecto, es necesario tener un entorno Linux con las siguientes dependencias:
+
+### Herramientas y Bibliotecas
+
+- *Compilador GCC*: Se necesita para compilar el código fuente en C.
+- *Biblioteca de Sockets*: El programa utiliza `sys/socket.h` para crear y gestionar sockets de red.
+- `arpa/inet.h`: Proporciona funciones para la manipulación de direcciones IP y su conversión entre diferentes formatos (por ejemplo, `inet_addr`).
+- `netinet/in.h`: Necesaria para trabajar con direcciones de red en la familia de protocolos `AF_INET` (usado para IPv4).
+- `unistd.h`: Permite cerrar los descriptores de archivos y realizar otras operaciones del sistema operativo como el control de procesos.
+- `string.h`: Para manipular cadenas y gestionar bloques de memoria, como `memset` y `memcpy`.
+- `net/if.h`: Proporciona definiciones y estructuras necesarias para configurar interfaces de red, como `struct ifreq`, utilizado con `ioctl()`.
+
+### Configuración del Sistema Operativo
+
+Es recomendable que el proyecto se ejecute en un sistema operativo Linux, preferiblemente una distribución que facilite el manejo de redes como Ubuntu, Fedora o Arch Linux. Además, es importante tener privilegios de superusuario para poder gestionar los sockets y las interfaces de red.
+
+### Instalación de Dependencias
+
+Para instalar las dependencias necesarias en un sistema basado en Debian/Ubuntu, ejecuta lo siguiente:
+
+```bash
+sudo apt-get update
+sudo apt-get install build-essential net-tools
+```
+
+## Configuración de Subredes
+
+El relay DHCP debe configurarse correctamente para operar entre distintas subredes. Esto incluye la configuración de las interfaces de red que van a gestionar las solicitudes y respuestas entre el servidor DHCP y los clientes.
+
+### Ejemplo de Configuración de Subredes
+
+- **Subred 1 (Clientes)**: 192.168.56.0/24
+  - Los clientes DHCP están en esta subred y enviarán solicitudes DHCP.
+  - El relay escucha en esta subred para recibir los mensajes provenientes de los clientes.
+
+- **Subred 2 (Servidor)**: 192.168.57.0/24
+  - El servidor DHCP está ubicado en esta subred y no puede recibir mensajes directamente de la subred 1.
+  - El relay reenviará los mensajes de los clientes a esta subred.
+
+El relay se asegura de modificar el campo `giaddr` (Gateway IP Address) en los mensajes DHCP, indicando la IP del relay para que el servidor sepa a qué subred reenviar la respuesta.
+
+### Configuración IP de las Interfaces
+
+Debes asegurarte de que las interfaces de red estén configuradas correctamente en tu máquina para que el relay pueda operar. Ejemplo de configuración:
+
+```bash
+sudo ifconfig enp0s3 192.168.56.1 netmask 255.255.255.0
+sudo ifconfig enp0s8 192.168.57.1 netmask 255.255.255.0
+```
+
+## Adaptadores e Interfaces
+
+Este proyecto utiliza dos adaptadores de red o interfaces específicas para manejar la comunicación entre el cliente y el servidor DHCP.
+
+- **CLIENT_ASSOCIATED_INTERFACE**: Esta interfaz está destinada a la subred donde se encuentran los clientes. En el proyecto, es representada por `enp0s3` y es utilizada para escuchar y reenviar mensajes provenientes de los clientes DHCP.
+
+- **SERVER_ASSOCIATED_INTERFACE**: Esta interfaz está asociada con la subred donde se encuentra el servidor DHCP. En este proyecto, es representada por `enp0s8` y se utiliza para reenviar los mensajes de los clientes al servidor y recibir respuestas desde el servidor.
+
+El relay asegura que cada mensaje DHCP se envíe a través de la interfaz de red adecuada, dependiendo de su origen y destino.
+
+## Tipo de Socket del Servidor
+
+El servidor DHCP utiliza un socket de tipo UDP (`SOCK_DGRAM`), que es ideal para mensajes cortos que no requieren una conexión establecida (como los mensajes DHCP). Este socket escucha en el puerto 1067, que es el puerto donde el relay reenvía las solicitudes desde los clientes.
+
+UDP es adecuado para DHCP porque se basa en un protocolo sin conexión, lo que lo hace más ligero y rápido que TCP, que requiere el establecimiento de una conexión antes de transmitir datos.
+
+## Tipo de Socket del Cliente
+
+El cliente también utiliza un socket de tipo UDP (`SOCK_DGRAM`), pero este escucha en el puerto 1068. El relay se asegura de que los mensajes reenviados desde el servidor DHCP lleguen a este puerto del cliente, utilizando broadcast si es necesario.
+
+UDP es crucial en el lado del cliente ya que permite que múltiples clientes envíen solicitudes al mismo tiempo sin la necesidad de establecer conexiones dedicadas, lo que sería ineficiente.
+
+## Contenido de las Carpetas
+
+El proyecto sigue una estructura modular para facilitar el desarrollo y mantenimiento. Aquí se presenta un resumen del contenido de cada carpeta principal:
+
+- **/socket/**:
+  - Contiene el archivo `socket.c` que define las funciones para crear, inicializar y gestionar los sockets. También contiene funciones para recibir y enviar mensajes a través del socket.
+
+- **/structs/**:
+  - Contiene las estructuras de datos necesarias para el manejo de los mensajes DHCP, como la estructura `dhcp_message`, que define el formato del mensaje DHCP según el protocolo.
+
+- **/constants/**:
+  - Almacena las constantes importantes como los puertos utilizados por el servidor y el cliente DHCP, la dirección IP del servidor, el tamaño del buffer y las interfaces de red asociadas.
+
+- **/error/**:
+  - Implementa una función para manejar los errores en el sistema. Utiliza `fprintf` para enviar mensajes a `stderr` cuando ocurre un error crítico, y finaliza la ejecución con `exit()`.
+
+- **/dhcp/**:
+  - Contiene las funciones específicas para el protocolo DHCP, incluyendo la función `get_dhcp_message_type` que permite determinar el tipo de mensaje DHCP recibido.
+
+## Saberes Previos
+
+Este proyecto requiere ciertos conocimientos previos para ser comprendido y ejecutado correctamente. A continuación se enumeran los saberes necesarios:
+
+### Conocimientos en Programación en C
+
+Es necesario tener un buen entendimiento de la programación en C, especialmente en las áreas de:
+
+- **Manipulación de Punteros**: El manejo de punteros es esencial para trabajar con buffers y estructuras de datos.
+- **Manejo de Sockets**: Familiaridad con la creación, vinculación y uso de sockets, particularmente sockets UDP.
+- **Manejo de Errores**: Es importante comprender cómo capturar y manejar errores en C utilizando mecanismos como `stderr`, `fprintf`, y `exit()`.
+
+### Redes y Protocolo DHCP
+
+Debes tener un conocimiento básico de las redes y, específicamente, de cómo funciona el protocolo DHCP. Esto incluye:
+
+- **Mensajes DHCP**: Conocer los tipos de mensajes como DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, DHCPACK, y DHCPRELEASE.
+- **Funcionamiento del Relay**: Comprender cómo un relay DHCP actúa como intermediario entre diferentes subredes y cómo modifica los mensajes para que se reenvíen correctamente.
+- **Subredes y Rutas**: Comprender cómo se configuran subredes y enrutamientos en Linux, y cómo el relay facilita la comunicación entre estas subredes.
+
+### Administración de Sistemas Linux
+
+Se requiere un nivel intermedio de conocimientos en la administración de sistemas Linux, incluyendo:
+
+- **Configuración de Interfaces de Red**: Saber cómo configurar y gestionar interfaces de red utilizando herramientas como `ifconfig` o `ip`.
+- **Permisos de Superusuario**: Entender cómo ejecutar comandos con privilegios de root para abrir sockets en puertos específicos.
+
+## Ejecución del Proyecto
+
+Para compilar y ejecutar el proyecto:
+
+### Compilación
+
+Compila el código con el siguiente comando:
+
+```bash
+gcc -o dhcp_relay main.c socket/socket.c dhcp/dhcp.c error/error.c -o relay
+```
+
+Asegúrate de tener configuradas las interfaces de red correctamente (como se explicó en la sección de configuración de subredes).
+
+### Ejecución
+
+Ejecuta el programa con permisos de superusuario:
+
+```bash
+sudo ./relay
+```
+
+El relay comenzará a escuchar en las interfaces configuradas y reenviará mensajes DHCP entre los clientes y el servidor.
+
+---
 
 
 
