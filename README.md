@@ -1,9 +1,5 @@
 <h1 align="center"> DHCP-PROTOCOL</h1>
 
-## Enlace del video 
-
-https://www.canva.com/design/DAGT_EBS7Yg/vKIvbGTi1IDOZ5ppKeX8yQ/edit?utm_content=DAGT_EBS7Yg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
-
 ## Contribuidores
 
 
@@ -14,6 +10,10 @@ https://www.canva.com/design/DAGT_EBS7Yg/vKIvbGTi1IDOZ5ppKeX8yQ/edit?utm_content
 
 
 - Valentina Giraldo Noreña
+
+## Enlace del video 
+
+En el [LINK](https://www.canva.com/design/DAGT_EBS7Yg/vKIvbGTi1IDOZ5ppKeX8yQ/edit?utm_content=DAGT_EBS7Yg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton) podrá encontrar el video asociado a la implementación del proyecto.
 
 ## Conocimientos Previos
 
