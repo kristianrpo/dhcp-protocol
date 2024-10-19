@@ -15,6 +15,9 @@
 
 En el [LINK](https://www.canva.com/design/DAGT_EBS7Yg/vKIvbGTi1IDOZ5ppKeX8yQ/edit?utm_content=DAGT_EBS7Yg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton) podrá encontrar el video asociado a la implementación del proyecto.
 
+## Diagramas
+En la [PÁGINA DE LA WIKI](https://github.com/kristianrpo/dhcp-protocol/wiki/Diagrams), podrá encontrar los diagramas de componentes relacionados con la implementación del protocolo DHCP, tanto para escenarios dentro de la misma subred como para redes distintas. Estos diagramas facilitan la comprensión de la estructura y la comunicación entre los distintos componentes en función de cada tipo de red.
+
 ## Conocimientos Previos
 
 Para comprender este proyecto, es necesario tener un conocimiento básico de los siguientes conceptos:
