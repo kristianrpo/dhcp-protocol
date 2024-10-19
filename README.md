@@ -159,6 +159,8 @@ Asimismo es importante explicar, el contenido establecido dentro de la carpeta d
 
 Es indispensable resaltar que dentro de cada archivo contenido en cada carpeta se especifica línea por línea mediante comentarios el funcionamiento del código, ya sea sus métodos, funciones, sockets, uso de puertos y demás funcionalidades implementadas en el proyecto. Por ello, se recomienda darle un vistazo a cada uno de los archivos contenidos en las carpetas del código.
 
+# Implementación del Server DHCP
+
 ## Conocimientos Previos
 
 Para comprender este proyecto, es necesario tener un conocimiento básico de los siguientes conceptos:
