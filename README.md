@@ -120,7 +120,7 @@ El proyecto está organizado en las siguientes carpetas:
 Utiliza el compilador GCC para compilar el cliente:
 
 ```bash
-gcc -o dhcp_client main.c socket/socket.c dhcp/dhcp.c utils/utils.c error/error.c -lpthread
+gcc -o compiled main.c socket/socket.c dhcp/dhcp.c utils/utils.c error/error.c 
 ```
 
 ### Ejecución
@@ -128,7 +128,7 @@ gcc -o dhcp_client main.c socket/socket.c dhcp/dhcp.c utils/utils.c error/error.
 Ejecuta el cliente con privilegios de administrador:
 
 ```bash
-sudo ./dhcp_client
+sudo ./compiled
 ```
 
 El programa iniciará el proceso DHCP DISCOVER para obtener una dirección IP para la interfaz especificada (por defecto `enp0s3`).
