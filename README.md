@@ -420,8 +420,8 @@ Este proyecto permite la implementación básica de un servidor DHCP capaz de ge
 Aunque se han alcanzado los objetivos principales, quedan áreas de mejora, como la implementación del cliente y del relay DHCP, así como la extensión de la funcionalidad del servidor para manejar errores y condiciones especiales de manera más robusta.
 
 ## Referencias
-• https://beej.us/guide/bgnet/
-• https://beej.us/guide/bgc/
-• https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
-• https://datatracker.ietf.org/doc/html/rfc2131
-• https://datatracker.ietf.org/doc/rfc3456/
+- https://beej.us/guide/bgnet/
+- https://beej.us/guide/bgc/
+- https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
+- https://datatracker.ietf.org/doc/html/rfc2131
+- https://datatracker.ietf.org/doc/rfc3456/
