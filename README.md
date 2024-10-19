@@ -18,13 +18,6 @@ Es indispensable resaltar que dentro de cada archivo contenido en cada carpeta s
 
 Este proyecto implementa un *cliente DHCP* en *C*, diseñado para manejar la asignación, renovación y liberación de direcciones IP mediante sockets y multihilos. El cliente interactúa con un servidor DHCP para obtener una dirección IP y la configuración de red para una interfaz específica.
 
-## 2. ISO a Instalar
-
-Para configurar el entorno de desarrollo y ejecución, se recomienda usar una distribución de *Linux basada en Debian*, como **Ubuntu** o **Debian**. Puedes descargar las últimas versiones desde:
-
-- [Descargar Ubuntu](https://ubuntu.com/download)
-- [Descargar Debian](https://www.debian.org/distrib/)
-
 ## 3. Dependencias de Configuración
 
 Para compilar y ejecutar el cliente DHCP, es necesario instalar las siguientes dependencias:
