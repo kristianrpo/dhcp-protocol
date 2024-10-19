@@ -400,3 +400,28 @@ A continuación se describe el propósito y el contenido de cada archivo en este
 ### 7. *utils.h y utils.c*
    - *Propósito*: Proporcionar funciones utilitarias para la conversión de direcciones IP de cadena de texto a formato binario y viceversa.
    - *Explicación*: Estas funciones (ip_to_int e int_to_ip) se utilizan para manejar las direcciones IP en el servidor de manera eficiente.
+
+
+### Logrados
+- Comunicación funcional entre cliente y servidor usando sockets UDP.
+- Asignación dinámica de direcciones IP a los clientes.
+- Implementación de arrendamientos con tiempo limitado, permitiendo la renovación o liberación de IPs.
+- Gestión de múltiples solicitudes simultáneas mediante hilos.
+- Manejo de errores básicos (sin direcciones IP disponibles, cliente desconectado, etc.).
+
+### No Logrados
+- No se ha implementado un mecanismo de seguridad para la autenticación de clientes, lo que podría ser un área de mejora para proteger la red.
+- No se implementó la gestión avanzada de logs ni la interacción con bases de datos para almacenar arrendamientos históricos, lo que podría mejorar el seguimiento y análisis de los arrendamientos.
+
+## Conclusiones
+
+Este proyecto permite la implementación básica de un servidor DHCP capaz de gestionar solicitudes de clientes y asignar direcciones IP de manera dinámica. Mediante el uso de sockets UDP y hilos, se consigue una aplicación concurrente que puede manejar múltiples conexiones simultáneamente.
+
+Aunque se han alcanzado los objetivos principales, quedan áreas de mejora, como la implementación del cliente y del relay DHCP, así como la extensión de la funcionalidad del servidor para manejar errores y condiciones especiales de manera más robusta.
+
+## Referencias
+• https://beej.us/guide/bgnet/
+• https://beej.us/guide/bgc/
+• https://www.geeksforgeeks.org/tcp-server-client-implementation-in-c/
+• https://datatracker.ietf.org/doc/html/rfc2131
+• https://datatracker.ietf.org/doc/rfc3456/
