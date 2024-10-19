@@ -18,7 +18,7 @@ Es indispensable resaltar que dentro de cada archivo contenido en cada carpeta s
 
 Este proyecto implementa un *cliente DHCP* en *C*, diseñado para manejar la asignación, renovación y liberación de direcciones IP mediante sockets y multihilos. El cliente interactúa con un servidor DHCP para obtener una dirección IP y la configuración de red para una interfaz específica.
 
-## 3. Dependencias de Configuración
+## 2. Dependencias de Configuración
 
 Para compilar y ejecutar el cliente DHCP, es necesario instalar las siguientes dependencias:
 
@@ -38,7 +38,7 @@ sudo apt-get update
 sudo apt-get install build-essential
 ```
 
-## 4. Configuración de Subredes y Adaptadores
+## 3. Configuración de Subredes y Adaptadores
 
 ### Configuración de Subredes
 
@@ -71,7 +71,7 @@ sudo ip link set dev enp0s3 down
 sudo ip link set dev enp0s3 up
 ```
 
-## 5. Tipos de Sockets Utilizados
+## 4. Tipos de Sockets Utilizados
 
 ### Socket del Servidor
 
@@ -84,7 +84,7 @@ El cliente DHCP utiliza:
 - `SOCK_DGRAM`: para enviar mensajes broadcast al servidor en el puerto 67.
 - `SOCK_RAW`: para recibir mensajes broadcast del servidor en el puerto 68, especialmente cuando el cliente no tiene una dirección IP asignada.
 
-## 6. Estructura del Proyecto
+## 5. Estructura del Proyecto
 
 El proyecto está organizado en las siguientes carpetas:
 
@@ -113,7 +113,7 @@ El proyecto está organizado en las siguientes carpetas:
 - **structs/**: Define las estructuras de datos utilizadas en el programa.
   - `structs.h`: Definiciones de estructuras como `dhcp_message` y argumentos para funciones de hilos.
 
-## 7. Cómo Compilar y Ejecutar el Cliente
+## 6. Cómo Compilar y Ejecutar el Cliente
 
 ### Compilación
 
