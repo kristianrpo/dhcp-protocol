@@ -4,13 +4,13 @@
 ## Contribuidores
 
 
-Kristian Restrepo Cárdenas
+- Kristian Restrepo Cárdenas
 
 
-Evelyn Alejandra Zapata
+- Evelyn Alejandra Zapata
 
 
-Valentina Giraldo Noreña
+- Valentina Giraldo Noreña
 
 ## Conocimientos Previos
 
