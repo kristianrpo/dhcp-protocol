@@ -428,8 +428,6 @@ A continuación se describe el propósito y el contenido de cada archivo en este
 
 Este proyecto permite la implementación básica de un servidor DHCP capaz de gestionar solicitudes de clientes y asignar direcciones IP de manera dinámica. Mediante el uso de sockets UDP y hilos, se consigue una aplicación concurrente que puede manejar múltiples conexiones simultáneamente.
 
-Aunque se han alcanzado los objetivos principales, quedan áreas de mejora, como la implementación del cliente y del relay DHCP, así como la extensión de la funcionalidad del servidor para manejar errores y condiciones especiales de manera más robusta.
-
 ## Referencias
 - https://beej.us/guide/bgnet/
 - https://beej.us/guide/bgc/
