@@ -6,7 +6,7 @@
 Para comprender este proyecto, es necesario tener un conocimiento básico de los siguientes conceptos:
 
 ### 1. Sockets:
-Un *socket* es una abstracción que permite a las aplicaciones enviar y recibir datos a través de la red. Es la interfaz entre la aplicación y el sistema de red de bajo nivel. En este proyecto, se utilizan sockets tipo *SOCK_DGRAM* (Datagramas) para la implementación de un servidor y un cliente que se comunican mediante el protocolo UDP.
+Un socket es una abstracción que permite a las aplicaciones enviar y recibir datos a través de la red. Es la interfaz entre la aplicación y el sistema de red de bajo nivel. En este proyecto, se utilizan sockets tipo SOCK_DGRAM (Datagramas) para la implementación de un servidor y un cliente que se comunican mediante el protocolo UDP. Los sockets de tipo SOCK_RAW permiten el acceso a los protocolos de red subyacentes de bajo nivel. Con ellos, una aplicación puede enviar y recibir paquetes de red de forma más directa, sin la sobrecarga de un protocolo de transporte como TCP o UDP. Esto es útil para aplicaciones que necesitan manipular los encabezados de los paquetes o implementar protocolos personalizados.
 
 ### 2. API de Sockets Berkeley:
 La *API Sockets Berkeley* es una interfaz para la comunicación en red que permite a los desarrolladores gestionar la transmisión de datos entre aplicaciones. Proporciona las herramientas para crear, enlazar, escuchar, enviar y recibir datos a través de sockets, ya sea en el protocolo TCP o UDP.
@@ -17,6 +17,9 @@ El *protocolo DHCP* (Dynamic Host Configuration Protocol) permite la asignación
 - DHCPOFFER: El servidor responde con una oferta de dirección IP.
 - DHCPREQUEST: El cliente confirma que acepta la IP ofrecida.
 - DHCPACK: El servidor confirma la asignación de la dirección IP al cliente.
+
+![image](https://github.com/user-attachments/assets/ab38c3aa-e4fe-48c0-ba2d-8f9d17baca9a)
+
 
 ### 4. Programación en C y Concurrencia:
 Se deben tener conocimientos básicos de *programación en C, manejo de estructuras, punteros y gestión de memoria. Además, es importante comprender los principios de la **concurrencia* y el uso de *hilos* para manejar múltiples conexiones al servidor DHCP de forma simultánea.
