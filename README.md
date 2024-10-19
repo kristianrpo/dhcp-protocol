@@ -1,4 +1,4 @@
-<h1 align="center"># DHCP-PROTOCOL</h1>
+<h1 align="center"> DHCP-PROTOCOL</h1>
 
 
 ## Conocimientos Previos
