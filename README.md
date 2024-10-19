@@ -1,3 +1,5 @@
+# DHCP-PROTOCOL
+
 ## dhcp_multiple_networks
 
 
@@ -8,6 +10,136 @@ El relay actúa como intermediario, reenviando las solicitudes de los clientes (
 En el proyecto en la parte en la que se incluye múltiples subredes, el uso de un DHCP relay asegura que los clientes en diferentes subredes puedan recibir correctamente sus configuraciones de red, mejorando así la eficiencia y escalabilidad del sistema. Asimismo es importante explicar, el contenido establecido dentro de la carpeta dhcp_multiple_networks, esta se divide en 3 subcarpetas, cada una con una estructura moduralizada semejante entre ellas, encontrando como primera la carpeta client, luego relay y por último server, a continuación se explicará el contenido y desarrollo dentro de cada una, para que así se entienda y se familiarice a las personas con los temas tratados en el proyecto del curso Telemática.
 
 Es indispensable resaltar que dentro de cada archivo contenido en cada carpeta se especifica línea por línea mediante comentarios el funcionamiento del código, ya sea sus métodos, funciones, sockets, uso de puertos y demás funcionalidades implementadas en el proyecto. Por ello, se recomienda darle un vistazo a cada uno de los archivos contenidos en las carpetas del código.
+
+
+# Implementación del Cliente DHCP
+
+## 1. Programa Utilizado
+
+Este proyecto implementa un *cliente DHCP* en *C*, diseñado para manejar la asignación, renovación y liberación de direcciones IP mediante sockets y multihilos. El cliente interactúa con un servidor DHCP para obtener una dirección IP y la configuración de red para una interfaz específica.
+
+## 2. ISO a Instalar
+
+Para configurar el entorno de desarrollo y ejecución, se recomienda usar una distribución de *Linux basada en Debian*, como **Ubuntu** o **Debian**. Puedes descargar las últimas versiones desde:
+
+- [Descargar Ubuntu](https://ubuntu.com/download)
+- [Descargar Debian](https://www.debian.org/distrib/)
+
+## 3. Dependencias de Configuración
+
+Para compilar y ejecutar el cliente DHCP, es necesario instalar las siguientes dependencias:
+
+- *Compilador GCC*: para compilar el código en C.
+- *Bibliotecas de desarrollo*:
+  - `pthread`: para manejo de hilos.
+  - `netinet/in.h`, `arpa/inet.h`: para manipulación de direcciones IP y sockets.
+  - `sys/socket.h`: para creación y manejo de sockets.
+  - `net/if.h`: para manipulación de interfaces de red.
+  - `termios.h`, `fcntl.h`: para control de terminal y archivos.
+  - *Otras bibliotecas estándar de C*.
+
+Puedes instalar las dependencias con el siguiente comando:
+
+```bash
+sudo apt-get update
+sudo apt-get install build-essential
+```
+
+## 4. Configuración de Subredes y Adaptadores
+
+### Configuración de Subredes
+
+Para probar el cliente DHCP, asegúrate de que tu red esté configurada correctamente:
+
+- **Subred**: 192.168.1.0/24
+- **Puerta de enlace**: 192.168.1.1
+- **Servidor DNS**: 8.8.8.8
+- **Rango DHCP**: 192.168.1.100 - 192.168.1.200
+
+Configura tu servidor DHCP con este rango y parámetros.
+
+### Adaptadores e Interfaces
+
+El cliente interactúa con interfaces de red como `eth0` o `enp0s3`. Asegúrate de que la interfaz de red que vas a utilizar:
+
+- Está disponible y habilitada.
+- No tiene una dirección IP asignada previamente.
+
+Verifica tus interfaces de red con:
+
+```bash
+ip addr show
+```
+
+Para bajar y subir una interfaz:
+
+```bash
+sudo ip link set dev enp0s3 down
+sudo ip link set dev enp0s3 up
+```
+
+## 5. Tipos de Sockets Utilizados
+
+### Socket del Servidor
+
+El servidor DHCP utiliza un socket `SOCK_DGRAM` (UDP) en el puerto 67 para enviar y recibir mensajes de los clientes.
+
+### Socket del Cliente
+
+El cliente DHCP utiliza:
+
+- `SOCK_DGRAM`: para enviar mensajes broadcast al servidor en el puerto 67.
+- `SOCK_RAW`: para recibir mensajes broadcast del servidor en el puerto 68, especialmente cuando el cliente no tiene una dirección IP asignada.
+
+## 6. Estructura del Proyecto
+
+El proyecto está organizado en las siguientes carpetas:
+
+- **socket/**: Contiene el código para la creación y gestión de sockets.
+  - `socket.h`: Declaraciones de funciones para manejo de sockets.
+  - `socket.c`: Implementación de funciones para inicializar sockets UDP y RAW, y para enviar y recibir mensajes.
+
+- **dhcp/**: Maneja la lógica específica del protocolo DHCP.
+  - `dhcp.h`: Declaraciones de funciones relacionadas con DHCP.
+  - `dhcp.c`: Implementación de funciones para configurar y procesar mensajes DHCP (DISCOVER, REQUEST, ACK).
+
+- **utils/**: Proporciona funciones utilitarias para soporte del programa principal.
+  - `utils.h`: Declaraciones de funciones utilitarias.
+  - `utils.c`: Implementación de funciones como procesamiento de paquetes, obtención de dirección MAC, asignación de IP a interfaces y manejo de entrada del usuario.
+
+- **constants/**: Define constantes utilizadas en todo el proyecto.
+  - `constants.h`: Definición de constantes como puertos, tamaños de buffer y direcciones IP de broadcast.
+
+- **include/**: Contiene recursos compartidos y variables globales para sincronización.
+  - `shared_resources.h`: Declaraciones de mutexes y variables de condición para manejo de hilos.
+
+- **error/**: Maneja la gestión de errores en el programa.
+  - `error.h`: Declaraciones para manejo de errores.
+  - `error.c`: Implementación de funciones para imprimir mensajes de error y terminar el programa en caso de fallos críticos.
+
+- **structs/**: Define las estructuras de datos utilizadas en el programa.
+  - `structs.h`: Definiciones de estructuras como `dhcp_message` y argumentos para funciones de hilos.
+
+## 7. Cómo Compilar y Ejecutar el Cliente
+
+### Compilación
+
+Utiliza el compilador GCC para compilar el cliente:
+
+```bash
+gcc -o dhcp_client main.c socket/socket.c dhcp/dhcp.c utils/utils.c error/error.c -lpthread
+```
+
+### Ejecución
+
+Ejecuta el cliente con privilegios de administrador:
+
+```bash
+sudo ./dhcp_client
+```
+
+El programa iniciará el proceso DHCP DISCOVER para obtener una dirección IP para la interfaz especificada (por defecto `enp0s3`).
+
 
 
 
