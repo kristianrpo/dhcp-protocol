@@ -26,7 +26,7 @@ Se deben tener conocimientos básicos de *programación en C, manejo de estructu
 
 
 
-## dhcp_multiple_networks
+## Introducción dhcp_multiple_networks
 
 
 La implementación de un DHCP relay es crucial para el correcto funcionamiento de servidores y clientes en diferentes subredes y redes, ya que permite la transmisión de mensajes DHCP entre clientes y servidores que no se encuentran en la misma red local. Esto es especialmente importante en redes de gran escala, donde no es eficiente ni práctico tener un servidor DHCP en cada subred.
@@ -318,7 +318,7 @@ El relay comenzará a escuchar en las interfaces configuradas y reenviará mensa
 
 
 
-## dhcp_same_network
+## Introducción dhcp_same_network
 
 
 La implementación de un servidor y cliente corriendo en una misma red es fundamental para asegurar una comunicación eficiente y controlada dentro de cualquier sistema de red. En este proyecto, la conexión entre el cliente y el servidor a través del protocolo DHCP permite que los dispositivos dentro de la misma red local se configuren automáticamente, sin necesidad de intervención manual.
