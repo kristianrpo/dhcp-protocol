@@ -173,7 +173,7 @@ El programa iniciará el proceso DHCP DISCOVER para obtener una dirección IP pa
 
 
 
-# Proyecto Relay DHCP
+# Implementación Relay DHCP
 
 ## Descripción del Programa
 
